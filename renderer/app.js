@@ -3,6 +3,7 @@ class BloomRenderer {
   constructor() {
     this.isConnected = false;
     this.agentName = '';
+    this.jadenHasControl = false;
     this.setupEventListeners();
     this.initializeUI();
   }
@@ -18,6 +19,43 @@ class BloomRenderer {
 
     // Show setup screen initially
     this.showScreen('setup-screen');
+  }
+
+  // Coral Glow Border Methods - Visual indicator when Jaden has control
+  showJadenControl() {
+    this.jadenHasControl = true;
+    const border = document.getElementById('jaden-control-border');
+    const indicator = document.getElementById('jaden-status-indicator');
+
+    if (border) {
+      border.classList.add('active');
+    }
+
+    if (indicator) {
+      const statusText = indicator.querySelector('.status-text');
+      if (statusText) {
+        statusText.textContent = `${this.agentName || 'Jaden'} is controlling your desktop`;
+      }
+      indicator.classList.add('active');
+    }
+
+    console.log('Jaden control border activated');
+  }
+
+  hideJadenControl() {
+    this.jadenHasControl = false;
+    const border = document.getElementById('jaden-control-border');
+    const indicator = document.getElementById('jaden-status-indicator');
+
+    if (border) {
+      border.classList.remove('active');
+    }
+
+    if (indicator) {
+      indicator.classList.remove('active');
+    }
+
+    console.log('Jaden control border deactivated');
   }
 
   setupEventListeners() {
@@ -88,10 +126,30 @@ class BloomRenderer {
       this.hideConnectionLoading();
     });
 
-    // Permission revoked
+    // Permission revoked - hide Jaden control border
     window.electronAPI.onPermissionRevoked((event, reason) => {
       this.hideSessionStatus();
+      this.hideJadenControl();
       this.showNotification('Session ended', reason);
+    });
+
+    // Permission granted - show Jaden control border
+    window.electronAPI.onPermissionGranted((event, data) => {
+      console.log('Permission granted:', data);
+      this.showJadenControl();
+      this.showNotification('Session started', `${this.agentName || 'Agent'} now has desktop control`);
+    });
+
+    // Session start - ensure Jaden control border is visible
+    window.electronAPI.onSessionStart((event, data) => {
+      console.log('Session started:', data);
+      this.showJadenControl();
+    });
+
+    // Connection lost - hide Jaden control border
+    window.electronAPI.onConnectionLost((event) => {
+      this.hideJadenControl();
+      this.showDisconnectedState();
     });
   }
 

@@ -292,9 +292,14 @@ class BloomDesktopApp {
     ipcMain.handle('connect', async (event, connectionCode) => {
       try {
         // Parse connection code (format: agent-url:token)
-        const [agentUrl, token] = connectionCode.split(':');
+        const lastColonIndex = connectionCode.lastIndexOf(':');
+        if (lastColonIndex === -1) {
+          throw new Error('Invalid connection code format: expected agent-url:token');
+        }
+        const agentUrl = connectionCode.substring(0, lastColonIndex);
+        const token = connectionCode.substring(lastColonIndex + 1);
         if (!agentUrl || !token) {
-          throw new Error('Invalid connection code format');
+          throw new Error('Invalid connection code format: expected agent-url:token');
         }
 
         // Initialize connection manager
@@ -329,10 +334,21 @@ class BloomDesktopApp {
           this.revokePermission('Session ended by agent');
         });
 
+        this.connectionManager.on('permission_granted', (data) => {
+          console.log('Permission granted by user:', data);
+          this.mainWindow?.webContents.send('permission-granted', data);
+        });
+
+        this.connectionManager.on('session_start', (data) => {
+          console.log('Session started:', data);
+          this.mainWindow?.webContents.send('session-start', data);
+        });
+
         this.connectionManager.on('disconnect', () => {
           this.isConnected = false;
           this.systemTray?.updateStatus(false, null);
           this.mainWindow?.webContents.send('connection-status', { connected: false });
+          this.mainWindow?.webContents.send('connection-lost');
         });
 
         await this.connectionManager.connect();

@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onConnectionStatus: (callback) => ipcRenderer.on('connection-status', callback),
   onConnectionError: (callback) => ipcRenderer.on('connection-error', callback),
   onPermissionRevoked: (callback) => ipcRenderer.on('permission-revoked', callback),
+  onPermissionGranted: (callback) => ipcRenderer.on('permission-granted', callback),
+  onSessionStart: (callback) => ipcRenderer.on('session-start', callback),
+  onConnectionLost: (callback) => ipcRenderer.on('connection-lost', callback),
   onSetPermissionData: (callback) => ipcRenderer.on('set-permission-data', callback),
 
   // Remove listeners (for cleanup)
