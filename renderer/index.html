@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLOOM Desktop</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Setup Screen (shown initially) -->
+    <div id="setup-screen" class="screen active">
+      <div class="logo-section">
+        <div class="logo">🌸</div>
+        <h1>BLOOM Desktop</h1>
+        <p class="subtitle">Connect Your AI Employee</p>
+      </div>
+
+      <div class="connection-form">
+        <div class="form-group">
+          <label for="connection-code">Enter your connection code:</label>
+          <input
+            type="text"
+            id="connection-code"
+            placeholder="agent-url:token"
+            autocomplete="off"
+          >
+          <div class="form-help">
+            Find this in your BLOOM dashboard under<br>
+            Settings → Desktop Connection
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button id="connect-btn" class="primary-btn">Connect</button>
+        </div>
+
+        <div id="connection-error" class="error-message" style="display: none;"></div>
+        <div id="connection-loading" class="loading-message" style="display: none;">
+          <div class="spinner"></div>
+          Connecting...
+        </div>
+      </div>
+    </div>
+
+    <!-- Connected Screen -->
+    <div id="connected-screen" class="screen">
+      <div class="logo-section">
+        <div class="logo">🌸</div>
+        <h1>BLOOM Desktop</h1>
+        <div class="status-indicator">
+          <div class="status-dot connected"></div>
+          <span id="agent-name">Connected to Agent</span>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <p class="description">
+          <span id="connected-agent-name">Your agent</span> can request access to your screen when
+          they need to work on your computer.
+        </p>
+        <p class="description">
+          You'll see a popup asking for permission.
+          You can watch them work or go grab coffee.
+        </p>
+
+        <div class="divider"></div>
+
+        <div class="emergency-info">
+          <span class="emergency-icon">🔐</span>
+          <span class="emergency-text">Emergency Stop:
+            <kbd id="emergency-key">Cmd+Shift+Esc</kbd>
+          </span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="button-group">
+          <button id="view-log-btn" class="secondary-btn">View Session Log</button>
+          <button id="disconnect-btn" class="danger-btn">Disconnect</button>
+        </div>
+
+        <div id="session-status" class="session-status" style="display: none;">
+          <div class="session-indicator">
+            <div class="session-dot active"></div>
+            <span>Active Session</span>
+          </div>
+          <button id="stop-session-btn" class="danger-btn">Stop Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session Log Modal -->
+    <div id="log-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Session Log</h3>
+          <button id="close-log-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="session-log-content">
+            <div class="log-entry">
+              <div class="log-timestamp">Today, 2:34 PM</div>
+              <div class="log-details">
+                <strong>Sally</strong> accessed your screen for 5 minutes<br>
+                <em>Task: Built landing page in Canva</em>
+              </div>
+            </div>
+            <div class="log-entry">
+              <div class="log-timestamp">Yesterday, 10:15 AM</div>
+              <div class="log-details">
+                <strong>Sally</strong> accessed your screen for 12 minutes<br>
+                <em>Task: Updated website content</em>
+              </div>
+            </div>
+            <div class="log-empty" style="display: none;">
+              No session history yet.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

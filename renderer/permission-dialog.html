@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Permission Request - BLOOM Desktop</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      color: #2d3748;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .permission-container {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+      border: 1px solid #e2e8f0;
+      width: 100%;
+      max-width: 450px;
+      text-align: center;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .warning-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: block;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #1a202c;
+    }
+
+    .agent-name {
+      color: #f4a261;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #718096;
+      margin: 0 0 24px 0;
+      line-height: 1.5;
+    }
+
+    .reason-box {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 24px 0;
+      text-align: left;
+    }
+
+    .reason-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .reason-text {
+      font-size: 16px;
+      color: #2d3748;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    .warning-info {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .warning-info-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .warning-info-text {
+      font-size: 14px;
+      color: #92400e;
+      line-height: 1.4;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 32px;
+    }
+
+    button {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 130px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .allow-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+
+    .allow-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .allow-watch-btn {
+      background: linear-gradient(135deg, #f4a261, #e76f8b);
+      color: white;
+      box-shadow: 0 4px 14px rgba(244, 162, 97, 0.3);
+    }
+
+    .allow-watch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(244, 162, 97, 0.4);
+    }
+
+    .deny-btn {
+      background: #f8f9fa;
+      color: #6c757d;
+      border: 2px solid #e9ecef;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .deny-btn:hover {
+      background: #e9ecef;
+      border-color: #dee2e6;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .watch-info {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #718096;
+      line-height: 1.4;
+    }
+
+    .emergency-reminder {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .emergency-text {
+      font-size: 13px;
+      color: #dc2626;
+      font-weight: 500;
+    }
+
+    kbd {
+      background: #374151;
+      color: white;
+      padding: 3px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-family: monospace;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .permission-container {
+        margin: 16px;
+        padding: 24px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="permission-container">
+    <div class="warning-icon">🔐</div>
+
+    <h2><span id="agent-name" class="agent-name">Agent</span> wants access</h2>
+    <p class="subtitle">Your AI employee is requesting permission to control your computer</p>
+
+    <div class="reason-box">
+      <div class="reason-label">Task Description</div>
+      <div id="reason-text" class="reason-text">
+        Working on your computer to complete a task
+      </div>
+    </div>
+
+    <div class="warning-info">
+      <span class="warning-info-icon">⚠️</span>
+      <div class="warning-info-text">
+        <strong>Important:</strong> Your agent will be able to control your mouse, keyboard, and see your screen. Only allow trusted agents to access your computer.
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="allow-btn" class="allow-btn">Allow Access</button>
+      <button id="allow-watch-btn" class="allow-watch-btn">Allow & Watch</button>
+      <button id="deny-btn" class="deny-btn">Deny</button>
+    </div>
+
+    <div class="watch-info">
+      <strong>Allow & Watch</strong> opens a live view so you can see what your agent is doing
+    </div>
+
+    <div class="emergency-reminder">
+      <span>🆘</span>
+      <span class="emergency-text">
+        Emergency Stop: <kbd id="emergency-key">Cmd+Shift+Esc</kbd>
+      </span>
+    </div>
+  </div>
+
+  <script>
+    class PermissionDialog {
+      constructor() {
+        this.agentName = '';
+        this.reason = '';
+        this.setupEventListeners();
+        this.setupPlatformSpecifics();
+        this.listenForData();
+      }
+
+      setupEventListeners() {
+        const allowBtn = document.getElementById('allow-btn');
+        const allowWatchBtn = document.getElementById('allow-watch-btn');
+        const denyBtn = document.getElementById('deny-btn');
+
+        allowBtn.addEventListener('click', () => {
+          this.handleAllow(false);
+        });
+
+        allowWatchBtn.addEventListener('click', () => {
+          this.handleAllow(true);
+        });
+
+        denyBtn.addEventListener('click', () => {
+          this.handleDeny();
+        });
+
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            this.handleDeny();
+          } else if (e.key === 'Enter') {
+            this.handleAllow(false);
+          }
+        });
+      }
+
+      setupPlatformSpecifics() {
+        const emergencyKey = document.getElementById('emergency-key');
+        if (window.electronAPI && window.electronAPI.platform) {
+          emergencyKey.textContent = window.electronAPI.platform === 'darwin'
+            ? 'Cmd+Shift+Esc'
+            : 'Ctrl+Shift+Esc';
+        }
+      }
+
+      listenForData() {
+        if (window.permissionAPI && window.permissionAPI.onSetData) {
+          window.permissionAPI.onSetData((event, data) => {
+            this.setPermissionData(data);
+          });
+        }
+      }
+
+      setPermissionData(data) {
+        this.agentName = data.agentName || 'Agent';
+        this.reason = data.reason || 'Working on your computer to complete a task';
+
+        // Update UI
+        const agentNameEl = document.getElementById('agent-name');
+        const reasonTextEl = document.getElementById('reason-text');
+
+        if (agentNameEl) {
+          agentNameEl.textContent = this.agentName;
+        }
+
+        if (reasonTextEl) {
+          reasonTextEl.textContent = this.reason;
+        }
+
+        // Update page title
+        document.title = `${this.agentName} - Permission Request`;
+      }
+
+      async handleAllow(watchLive) {
+        try {
+          if (watchLive) {
+            await window.permissionAPI.allowAndWatch();
+          } else {
+            await window.permissionAPI.allow();
+          }
+
+          // Close the dialog
+          window.close();
+        } catch (error) {
+          console.error('Failed to grant permission:', error);
+        }
+      }
+
+      async handleDeny() {
+        try {
+          await window.permissionAPI.deny();
+
+          // Close the dialog
+          window.close();
+        } catch (error) {
+          console.error('Failed to deny permission:', error);
+        }
+      }
+    }
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      new PermissionDialog();
+    });
+
+    // Prevent context menu
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+  </script>
+</body>
+</html>

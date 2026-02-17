@@ -1,0 +1,65 @@
+{
+  "name": "bloom-desktop",
+  "version": "1.0.0",
+  "description": "BLOOM Desktop - Let your AI employee work on your computer",
+  "main": "main.js",
+  "author": "BLOOM Ecosystem",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "robotjs": "^0.6.0",
+    "ws": "^8.14.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0"
+  },
+  "build": {
+    "appId": "com.bloomecosystem.desktop",
+    "productName": "BLOOM Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "modules/**/*",
+      "assets/**/*",
+      "!build/**/*",
+      "!dist/**/*",
+      "!.git/**/*"
+    ],
+    "extraResources": []
+  }
+}
