@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- Default Electron entitlements for notarization -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- Screen recording permissions required for BLOOM Desktop -->
+    <key>com.apple.security.device.screen-capture</key>
+    <true/>
+
+    <!-- Audio recording permissions (in case needed for future features) -->
+    <key>com.apple.security.device.microphone</key>
+    <true/>
+
+    <!-- Input monitoring permissions for robotjs -->
+    <key>com.apple.security.cs.allow-accessibility</key>
+    <true/>
+  </dict>
+</plist>
