@@ -559,8 +559,7 @@ class BloomDesktopApp {
       focusable: false,
       skipTaskbar: true,
       hasShadow: false,
-      roundedCorners: false,      enableLargerThanScreen: true,'$'
-      enableLargerThanScreen: true,
+      roundedCorners: false,      enableLargerThanScreen: true,
 
       webPreferences: {
         nodeIntegration: false,
