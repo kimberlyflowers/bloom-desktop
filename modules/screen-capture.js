@@ -1,8 +1,9 @@
 const { desktopCapturer, screen } = require('electron');
 
 class ScreenCapture {
-  constructor(connectionManager) {
+  constructor(connectionManager, dashboardBridge = null) {
     this.connectionManager = connectionManager;
+    this.dashboardBridge = dashboardBridge; // optional — push frames to Sarah's dashboard
     this.isCapturing = false;
     this.captureInterval = null;
     this.frameRate = 2; // fps
@@ -73,6 +74,13 @@ class ScreenCapture {
             this.connectionManager.sendFrame(jpegBuffer);
           }
 
+          // Push frame to Sarah's dashboard (Screen Viewer)
+          if (this.dashboardBridge) {
+            // Get current URL from the Electron window if available (best-effort)
+            const currentUrl = this._getCurrentBrowserUrl();
+            this.dashboardBridge.receiveFrame(jpegBuffer, currentUrl);
+          }
+
           // Also send to watch window if exists
           if (global.bloomApp && global.bloomApp.watchWindow) {
             const base64 = jpegBuffer.toString('base64');
@@ -106,6 +114,28 @@ class ScreenCapture {
     }
 
     this.currentSource = null;
+
+    // Tell dashboard the screen is idle
+    if (this.dashboardBridge) {
+      this.dashboardBridge.sendIdle();
+    }
+  }
+
+  /** Let main.js inject or replace the bridge after init */
+  setDashboardBridge(bridge) {
+    this.dashboardBridge = bridge;
+  }
+
+  /** Best-effort: get the URL of whatever Electron BrowserWindow is focused */
+  _getCurrentBrowserUrl() {
+    try {
+      const { BrowserWindow } = require('electron');
+      const focused = BrowserWindow.getFocusedWindow();
+      if (focused && focused.webContents) {
+        return focused.webContents.getURL();
+      }
+    } catch {}
+    return '';
   }
 
   updateSettings(settings) {
