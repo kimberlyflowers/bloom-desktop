@@ -552,6 +552,7 @@ class BloomDesktopApp {
     this.glowOverlay = new BrowserWindow({
       x, y, width, height,
       transparent: true,
+      backgroundColor: '#00000000',
       frame: false,
       alwaysOnTop: true,
       focusable: false,
@@ -561,6 +562,7 @@ class BloomDesktopApp {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        backgroundThrottling: false,
       },
     });
 

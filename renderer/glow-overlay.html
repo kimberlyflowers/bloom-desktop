@@ -6,60 +6,54 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%; height: 100%;
-      background: transparent;
+      background: transparent !important;
       overflow: hidden;
       pointer-events: none;
       -webkit-app-region: no-drag;
     }
     canvas {
       position: fixed;
-      inset: 0;
-      width: 100%; height: 100%;
+      top: 0; left: 0;
       pointer-events: none;
-      opacity: 0;
-      transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
     }
   </style>
 </head>
 <body>
   <canvas id="glow"></canvas>
-
   <script>
     const canvas = document.getElementById('glow');
-    const ctx = canvas.getContext('2d');
-
-    // Fade in
-    requestAnimationFrame(() => { canvas.style.opacity = '1'; });
+    const ctx    = canvas.getContext('2d');
+    const DPR    = window.devicePixelRatio || 1;
 
     // BLOOM sunset palette
     const COLORS = [
-      { r: 255, g: 180, b:  71 },  // warm amber
-      { r: 244, g: 162, b:  97 },  // coral
-      { r: 231, g: 111, b: 138 },  // pink
-      { r: 244, g: 130, b: 100 },  // coral-orange
-      { r: 255, g: 160, b:  80 },  // amber-orange
-      { r: 231, g: 111, b: 138 },  // pink (loop close)
+      { r: 255, g: 180, b:  71 },
+      { r: 244, g: 162, b:  97 },
+      { r: 231, g: 111, b: 138 },
+      { r: 244, g: 130, b: 100 },
+      { r: 255, g: 160, b:  80 },
+      { r: 231, g: 111, b: 138 },
     ];
 
-    const FLOW_SPEED    = 0.00016; // color travel speed around border
-    const BREATHE_SPEED = 0.0008;  // pulse rate
-    const GLOW_WIDTH    = 52;      // glow thickness inward
-    const SEGMENTS      = 320;     // smoothness of the ring
-    const BLUR_PASSES   = 3;       // layered softness
+    const FLOW_SPEED    = 0.00016;
+    const BREATHE_SPEED = 0.0008;
+    const GLOW_WIDTH    = 55;
+    const SEGMENTS      = 300;
 
     function resize() {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const W = window.screen.width;
+      const H = window.screen.height;
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+      canvas.width  = W * DPR;
+      canvas.height = H * DPR;
+      ctx.scale(DPR, DPR);
+      console.log('[Glow] Canvas sized:', W, 'x', H, 'DPR:', DPR);
     }
     resize();
-    window.addEventListener('resize', resize);
 
-    function lerpColor(a, b, t) {
-      return {
-        r: a.r + (b.r - a.r) * t,
-        g: a.g + (b.g - a.g) * t,
-        b: a.b + (b.b - a.b) * t,
-      };
+    function lerp(a, b, t) {
+      return { r: a.r+(b.r-a.r)*t, g: a.g+(b.g-a.g)*t, b: a.b+(b.b-a.b)*t };
     }
 
     function getColor(pos, alpha) {
@@ -67,64 +61,87 @@
       const p = ((pos % 1) + 1) % 1;
       const idx = p * n;
       const i = Math.floor(idx);
-      const t = idx - i;
-      const c = lerpColor(COLORS[i], COLORS[Math.min(i + 1, n)], t);
+      const c = lerp(COLORS[i], COLORS[Math.min(i+1, n)], idx - i);
       return `rgba(${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)},${alpha.toFixed(3)})`;
     }
 
-    // Map 0..1 clockwise around perimeter to x,y
     function perimToXY(t, W, H) {
-      const perim = 2 * (W + H);
-      const d = ((t % 1) + 1) % 1 * perim;
-      if (d < W)           return { x: d,           y: 0 };
-      else if (d < W + H)  return { x: W,            y: d - W };
-      else if (d < 2*W+H)  return { x: W-(d-W-H),   y: H };
-      else                 return { x: 0,            y: H-(d-2*W-H) };
+      const perim = 2*(W+H);
+      const d = ((t%1)+1)%1 * perim;
+      if      (d < W)       return { x: d,          y: 0 };
+      else if (d < W+H)     return { x: W,           y: d-W };
+      else if (d < 2*W+H)   return { x: W-(d-W-H),  y: H };
+      else                  return { x: 0,           y: H-(d-2*W-H) };
     }
 
-    function draw(timestamp) {
-      const W = canvas.width;
-      const H = canvas.height;
+    let frameCount = 0;
+    function draw(ts) {
+      const W = window.screen.width;
+      const H = window.screen.height;
 
-      ctx.clearRect(0, 0, W, H);
+      // Reset transform before clearing, then reapply scale
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-      // Breathing: gentle sine pulse
-      const breathe = 0.68 + 0.32 * (Math.sin(timestamp * BREATHE_SPEED - Math.PI / 2) * 0.5 + 0.5);
+      const breathe    = 0.65 + 0.35 * (Math.sin(ts * BREATHE_SPEED - Math.PI/2) * 0.5 + 0.5);
+      const timeOffset = ts * FLOW_SPEED;
 
-      // Flow offset: drives colors around the border over time
-      const timeOffset = timestamp * FLOW_SPEED;
-
-      for (let pass = 0; pass < BLUR_PASSES; pass++) {
-        const blurPx    = (pass + 1) * 13;
-        const alphaBase = pass === 0 ? 0.90 : 0.45 / pass;
-        const lineW     = GLOW_WIDTH + pass * 10;
-
-        ctx.save();
-        ctx.filter  = `blur(${blurPx}px)`;
-        ctx.lineWidth = lineW;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        for (let i = 0; i < SEGMENTS; i++) {
-          const t0 = i / SEGMENTS;
-          const t1 = (i + 1.6) / SEGMENTS;
-
-          const p0 = perimToXY(t0, W, H);
-          const p1 = perimToXY(t1, W, H);
-
-          const colorPos = (t0 + timeOffset) % 1;
-          const alpha    = breathe * alphaBase;
-
-          ctx.beginPath();
-          ctx.moveTo(p0.x, p0.y);
-          ctx.lineTo(p1.x, p1.y);
-          ctx.strokeStyle = getColor(colorPos, alpha);
-          ctx.stroke();
-        }
-
-        ctx.restore();
+      // Pass 1: sharp bright core
+      ctx.save();
+      ctx.lineWidth = GLOW_WIDTH * 0.4;
+      ctx.lineCap   = 'round';
+      for (let i = 0; i < SEGMENTS; i++) {
+        const t0 = i / SEGMENTS;
+        const t1 = (i + 1.5) / SEGMENTS;
+        const p0 = perimToXY(t0, W, H);
+        const p1 = perimToXY(t1, W, H);
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.strokeStyle = getColor((t0 + timeOffset) % 1, breathe * 0.95);
+        ctx.stroke();
       }
+      ctx.restore();
 
+      // Pass 2: soft outer bloom
+      ctx.save();
+      ctx.filter   = 'blur(14px)';
+      ctx.lineWidth = GLOW_WIDTH * 1.2;
+      ctx.lineCap   = 'round';
+      for (let i = 0; i < SEGMENTS; i++) {
+        const t0 = i / SEGMENTS;
+        const t1 = (i + 1.5) / SEGMENTS;
+        const p0 = perimToXY(t0, W, H);
+        const p1 = perimToXY(t1, W, H);
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.strokeStyle = getColor((t0 + timeOffset) % 1, breathe * 0.55);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Pass 3: wide diffuse glow
+      ctx.save();
+      ctx.filter   = 'blur(30px)';
+      ctx.lineWidth = GLOW_WIDTH * 2.5;
+      ctx.lineCap   = 'round';
+      for (let i = 0; i < SEGMENTS; i++) {
+        const t0 = i / SEGMENTS;
+        const t1 = (i + 1.5) / SEGMENTS;
+        const p0 = perimToXY(t0, W, H);
+        const p1 = perimToXY(t1, W, H);
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.strokeStyle = getColor((t0 + timeOffset) % 1, breathe * 0.28);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      frameCount++;
+      if (frameCount % 60 === 0) console.log('[Glow] Running, frame:', frameCount, 'breathe:', breathe.toFixed(2));
       requestAnimationFrame(draw);
     }
 
