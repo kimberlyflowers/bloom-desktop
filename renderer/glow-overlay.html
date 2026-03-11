@@ -4,193 +4,131 @@
   <meta charset="UTF-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     html, body {
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       background: transparent;
       overflow: hidden;
       pointer-events: none;
       -webkit-app-region: no-drag;
     }
-
-    .frame {
+    canvas {
       position: fixed;
       inset: 0;
+      width: 100%; height: 100%;
       pointer-events: none;
-    }
-
-    /* ── CORNER HOTSPOTS ── */
-    /* Soft radial pools at each corner — not huge, just enough warmth */
-    .hotspot {
-      position: absolute;
-      pointer-events: none;
-      filter: blur(28px);
-    }
-
-    .hs-tl {
-      width: 260px; height: 200px;
-      top: -40px; left: -40px;
-      background: radial-gradient(ellipse at 15% 15%,
-        rgba(255, 180, 71, 0.92) 0%,
-        rgba(244, 162, 97, 0.58) 45%,
-        transparent 70%
-      );
-      animation-delay: 0s;
-    }
-
-    .hs-tr {
-      width: 260px; height: 200px;
-      top: -40px; right: -40px;
-      background: radial-gradient(ellipse at 85% 15%,
-        rgba(231, 111, 138, 0.90) 0%,
-        rgba(244, 120, 130, 0.56) 45%,
-        transparent 70%
-      );
-      animation-delay: 0.8s;
-    }
-
-    .hs-bl {
-      width: 220px; height: 180px;
-      bottom: -40px; left: -40px;
-      background: radial-gradient(ellipse at 15% 85%,
-        rgba(244, 162, 97, 0.7) 0%,
-        rgba(255, 140, 80, 0.35) 45%,
-        transparent 70%
-      );
-      animation-delay: 1.6s;
-    }
-
-    .hs-br {
-      width: 220px; height: 180px;
-      bottom: -40px; right: -40px;
-      background: radial-gradient(ellipse at 85% 85%,
-        rgba(231, 111, 138, 0.68) 0%,
-        rgba(255, 100, 130, 0.35) 45%,
-        transparent 70%
-      );
-      animation-delay: 2.4s;
-    }
-
-    /* ── EDGE STRIPS ── */
-    /* ~44px wide — fades to transparent inward. Ties corners together. */
-
-    .edge {
-      position: absolute;
-      pointer-events: none;
-    }
-
-    .edge-top {
-      top: 0; left: 0; right: 0;
-      height: 52px;
-      background: linear-gradient(180deg,
-        rgba(248, 160, 90, 0.88) 0%,
-        rgba(244, 162, 97, 0.45) 50%,
-        transparent 100%
-      );
-      mask-image: linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
-      animation-delay: 0s;
-    }
-
-    .edge-bottom {
-      bottom: 0; left: 0; right: 0;
-      height: 44px;
-      background: linear-gradient(0deg,
-        rgba(231, 111, 138, 0.65) 0%,
-        rgba(244, 130, 120, 0.28) 50%,
-        transparent 100%
-      );
-      mask-image: linear-gradient(90deg, transparent 0%, black 15%, black 85%, transparent 100%);
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 15%, black 85%, transparent 100%);
-      animation-delay: 1.6s;
-    }
-
-    .edge-left {
-      top: 0; left: 0; bottom: 0;
-      width: 44px;
-      background: linear-gradient(90deg,
-        rgba(255, 175, 80, 0.62) 0%,
-        rgba(244, 162, 97, 0.25) 55%,
-        transparent 100%
-      );
-      mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
-      -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
-      animation-delay: 0.4s;
-    }
-
-    .edge-right {
-      top: 0; right: 0; bottom: 0;
-      width: 44px;
-      background: linear-gradient(270deg,
-        rgba(231, 111, 138, 0.60) 0%,
-        rgba(240, 120, 130, 0.24) 55%,
-        transparent 100%
-      );
-      mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
-      -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
-      animation-delay: 1.2s;
-    }
-
-    /* Fade in gracefully on show */
-    .frame {
       opacity: 0;
-      transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .frame.visible {
-      opacity: 1;
+      transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
     }
   </style>
 </head>
 <body>
-  <div class="frame" id="frame">
-    <!-- Corner hotspots -->
-    <div class="hotspot hs-tl" id="hs-tl"></div>
-    <div class="hotspot hs-tr" id="hs-tr"></div>
-    <div class="hotspot hs-bl" id="hs-bl"></div>
-    <div class="hotspot hs-br" id="hs-br"></div>
-
-    <!-- Edge strips -->
-    <div class="edge edge-top" id="edge-top"></div>
-    <div class="edge edge-bottom" id="edge-bottom"></div>
-    <div class="edge edge-left" id="edge-left"></div>
-    <div class="edge edge-right" id="edge-right"></div>
-  </div>
+  <canvas id="glow"></canvas>
 
   <script>
-    // Fade frame in
-    requestAnimationFrame(() => {
-      document.getElementById('frame').classList.add('visible');
-    });
+    const canvas = document.getElementById('glow');
+    const ctx = canvas.getContext('2d');
 
-    // JS-driven breathing — Electron transparent windows suppress CSS animations
-    const elements = [
-      { id: 'hs-tl',      min: 0.45, max: 0.95, speed: 3200, phase: 0      },
-      { id: 'hs-tr',      min: 0.42, max: 0.92, speed: 3200, phase: 0.8    },
-      { id: 'hs-bl',      min: 0.42, max: 0.90, speed: 3200, phase: 1.6    },
-      { id: 'hs-br',      min: 0.40, max: 0.88, speed: 3200, phase: 2.4    },
-      { id: 'edge-top',   min: 0.50, max: 1.00, speed: 3200, phase: 0      },
-      { id: 'edge-bottom',min: 0.48, max: 0.98, speed: 3200, phase: 1.6    },
-      { id: 'edge-left',  min: 0.45, max: 0.92, speed: 3200, phase: 0.4    },
-      { id: 'edge-right', min: 0.42, max: 0.90, speed: 3200, phase: 1.2    },
+    // Fade in
+    requestAnimationFrame(() => { canvas.style.opacity = '1'; });
+
+    // BLOOM sunset palette
+    const COLORS = [
+      { r: 255, g: 180, b:  71 },  // warm amber
+      { r: 244, g: 162, b:  97 },  // coral
+      { r: 231, g: 111, b: 138 },  // pink
+      { r: 244, g: 130, b: 100 },  // coral-orange
+      { r: 255, g: 160, b:  80 },  // amber-orange
+      { r: 231, g: 111, b: 138 },  // pink (loop close)
     ];
 
-    const nodes = elements.map(el => ({
-      ...el,
-      node: document.getElementById(el.id)
-    }));
+    const FLOW_SPEED    = 0.00016; // color travel speed around border
+    const BREATHE_SPEED = 0.0008;  // pulse rate
+    const GLOW_WIDTH    = 52;      // glow thickness inward
+    const SEGMENTS      = 320;     // smoothness of the ring
+    const BLUR_PASSES   = 3;       // layered softness
 
-    function breathe(timestamp) {
-      nodes.forEach(({ node, min, max, speed, phase }) => {
-        // Sine wave: 0→1→0 over `speed` ms, offset by phase (seconds)
-        const t = (timestamp / speed + phase / (Math.PI * 2)) % 1;
-        const sine = (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2;
-        node.style.opacity = min + sine * (max - min);
-      });
-      requestAnimationFrame(breathe);
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function lerpColor(a, b, t) {
+      return {
+        r: a.r + (b.r - a.r) * t,
+        g: a.g + (b.g - a.g) * t,
+        b: a.b + (b.b - a.b) * t,
+      };
     }
 
-    requestAnimationFrame(breathe);
+    function getColor(pos, alpha) {
+      const n = COLORS.length - 1;
+      const p = ((pos % 1) + 1) % 1;
+      const idx = p * n;
+      const i = Math.floor(idx);
+      const t = idx - i;
+      const c = lerpColor(COLORS[i], COLORS[Math.min(i + 1, n)], t);
+      return `rgba(${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)},${alpha.toFixed(3)})`;
+    }
+
+    // Map 0..1 clockwise around perimeter to x,y
+    function perimToXY(t, W, H) {
+      const perim = 2 * (W + H);
+      const d = ((t % 1) + 1) % 1 * perim;
+      if (d < W)           return { x: d,           y: 0 };
+      else if (d < W + H)  return { x: W,            y: d - W };
+      else if (d < 2*W+H)  return { x: W-(d-W-H),   y: H };
+      else                 return { x: 0,            y: H-(d-2*W-H) };
+    }
+
+    function draw(timestamp) {
+      const W = canvas.width;
+      const H = canvas.height;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Breathing: gentle sine pulse
+      const breathe = 0.68 + 0.32 * (Math.sin(timestamp * BREATHE_SPEED - Math.PI / 2) * 0.5 + 0.5);
+
+      // Flow offset: drives colors around the border over time
+      const timeOffset = timestamp * FLOW_SPEED;
+
+      for (let pass = 0; pass < BLUR_PASSES; pass++) {
+        const blurPx    = (pass + 1) * 13;
+        const alphaBase = pass === 0 ? 0.90 : 0.45 / pass;
+        const lineW     = GLOW_WIDTH + pass * 10;
+
+        ctx.save();
+        ctx.filter  = `blur(${blurPx}px)`;
+        ctx.lineWidth = lineW;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        for (let i = 0; i < SEGMENTS; i++) {
+          const t0 = i / SEGMENTS;
+          const t1 = (i + 1.6) / SEGMENTS;
+
+          const p0 = perimToXY(t0, W, H);
+          const p1 = perimToXY(t1, W, H);
+
+          const colorPos = (t0 + timeOffset) % 1;
+          const alpha    = breathe * alphaBase;
+
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.strokeStyle = getColor(colorPos, alpha);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    requestAnimationFrame(draw);
   </script>
 </body>
 </html>
