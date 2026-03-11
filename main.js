@@ -8,7 +8,6 @@ const ConnectionManager = require('./modules/connection-manager');
 const ScreenCapture = require('./modules/screen-capture');
 const InputControl = require('./modules/input-control');
 const BrowserBridge = require('./modules/browser-bridge');
-const DashboardBridge = require('./modules/dashboard-bridge');
 
 class BloomDesktopApp {
   constructor() {
@@ -421,17 +420,21 @@ class BloomDesktopApp {
     this.inputControl = new InputControl();
     this.permissionManager = new PermissionManager();
 
-    // Wire BrowserBridge + DashboardBridge
-    this.dashboardBridge = new DashboardBridge(this.sarahUrl);
-    this.browserBridge = new BrowserBridge(this.dashboardBridge);
-    this.browserBridge.start();
-
-    // Notify glow overlay on incoming command activity
-    this.dashboardBridge.on && this.dashboardBridge.on('frame-sent', () => {
-      this.showGlowOverlay();
-      clearTimeout(this._glowIdleTimer);
-      this._glowIdleTimer = setTimeout(() => this.hideGlowOverlay(), 8000);
+    // BrowserBridge owns its own DashboardBridge internally — just start it
+    this.browserBridge = new BrowserBridge();
+    this.browserBridge.start().catch(err => {
+      console.warn('[BloomApp] BrowserBridge start failed (non-fatal):', err.message);
     });
+    this.dashboardBridge = this.browserBridge.dashboardBridge;
+
+    // Show glow overlay when frames are being pushed to Sarah
+    if (this.dashboardBridge) {
+      this.dashboardBridge.on('frame-sent', () => {
+        this.showGlowOverlay();
+        clearTimeout(this._glowIdleTimer);
+        this._glowIdleTimer = setTimeout(() => this.hideGlowOverlay(), 8000);
+      });
+    }
 
     // Create glow overlay window
     this.createGlowOverlay();
@@ -440,7 +443,7 @@ class BloomDesktopApp {
     if (process.argv.includes('--dev')) {
       setTimeout(() => {
         this.showGlowOverlay();
-        setTimeout(() => this.hideGlowOverlay(), 6000);
+        setTimeout(() => this.hideGlowOverlay(), 12000);
       }, 3000);
     }
 
