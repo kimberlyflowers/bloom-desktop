@@ -436,6 +436,14 @@ class BloomDesktopApp {
     // Create glow overlay window
     this.createGlowOverlay();
 
+    // DEV MODE: auto-trigger glow after 3s so you can visually verify it
+    if (process.argv.includes('--dev')) {
+      setTimeout(() => {
+        this.showGlowOverlay();
+        setTimeout(() => this.hideGlowOverlay(), 6000);
+      }, 3000);
+    }
+
     // Bridge status IPC
     ipcMain.handle('bridge-status', () => ({
       running: !!this.browserBridge,
