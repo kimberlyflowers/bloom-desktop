@@ -441,9 +441,17 @@ class BloomDesktopApp {
 
     // DEV MODE: auto-trigger glow after 3s so you can visually verify it
     if (process.argv.includes('--dev')) {
+      console.log('[DEV] Glow test scheduled — fires in 3s');
       setTimeout(() => {
+        console.log('[DEV] Firing glow overlay now');
         this.showGlowOverlay();
-        setTimeout(() => this.hideGlowOverlay(), 12000);
+        console.log('[DEV] glowOverlay window:', this.glowOverlay ? 'created' : 'NULL');
+        console.log('[DEV] glowOverlay visible:', this.glowOverlay?.isVisible());
+        console.log('[DEV] glowOverlay bounds:', this.glowOverlay?.getBounds());
+        setTimeout(() => {
+          console.log('[DEV] Hiding glow overlay');
+          this.hideGlowOverlay();
+        }, 12000);
       }, 3000);
     }
 
@@ -539,6 +547,7 @@ class BloomDesktopApp {
 
   createGlowOverlay() {
     const { width, height, x, y } = screen.getPrimaryDisplay().bounds;
+    console.log('[GlowOverlay] Creating — display bounds:', { width, height, x, y });
 
     this.glowOverlay = new BrowserWindow({
       x, y, width, height,
@@ -556,18 +565,28 @@ class BloomDesktopApp {
     });
 
     this.glowOverlay.setIgnoreMouseEvents(true);
-    this.glowOverlay.loadFile(path.join(__dirname, 'renderer/glow-overlay.html'));
+    const overlayPath = path.join(__dirname, 'renderer/glow-overlay.html');
+    console.log('[GlowOverlay] Loading file:', overlayPath);
+    this.glowOverlay.loadFile(overlayPath);
     this.glowOverlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     this.glowOverlay.hide();
+    console.log('[GlowOverlay] Created and hidden');
+
+    this.glowOverlay.webContents.on('did-finish-load', () => {
+      console.log('[GlowOverlay] HTML finished loading');
+    });
 
     this.glowOverlay.on('closed', () => { this.glowOverlay = null; });
   }
 
   showGlowOverlay() {
+    console.log('[GlowOverlay] showGlowOverlay called');
     if (!this.glowOverlay || this.glowOverlay.isDestroyed()) {
+      console.log('[GlowOverlay] Recreating...');
       this.createGlowOverlay();
     }
     this.glowOverlay.showInactive();
+    console.log('[GlowOverlay] showInactive called — visible:', this.glowOverlay.isVisible());
   }
 
   hideGlowOverlay() {
