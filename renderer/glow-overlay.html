@@ -26,7 +26,6 @@
       position: absolute;
       pointer-events: none;
       filter: blur(28px);
-      animation: pulse 3.2s ease-in-out infinite;
     }
 
     .hs-tl {
@@ -79,7 +78,6 @@
     .edge {
       position: absolute;
       pointer-events: none;
-      animation: edgePulse 3.2s ease-in-out infinite;
     }
 
     .edge-top {
@@ -134,45 +132,65 @@
       animation-delay: 1.2s;
     }
 
-    /* ── ANIMATIONS ── */
-
-    /* Staggered pulse — each element breathes slightly out of phase */
-    @keyframes pulse {
-      0%   { opacity: 0.5; transform: scale(1);    }
-      50%  { opacity: 1;   transform: scale(1.04); }
-      100% { opacity: 0.5; transform: scale(1);    }
-    }
-
-    @keyframes edgePulse {
-      0%   { opacity: 0.55; }
-      50%  { opacity: 1;    }
-      100% { opacity: 0.55; }
-    }
-
     /* Fade in gracefully on show */
     .frame {
-      animation: fadeIn 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      opacity: 0;
+      transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1);
     }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
+    .frame.visible {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
-  <div class="frame">
+  <div class="frame" id="frame">
     <!-- Corner hotspots -->
-    <div class="hotspot hs-tl"></div>
-    <div class="hotspot hs-tr"></div>
-    <div class="hotspot hs-bl"></div>
-    <div class="hotspot hs-br"></div>
+    <div class="hotspot hs-tl" id="hs-tl"></div>
+    <div class="hotspot hs-tr" id="hs-tr"></div>
+    <div class="hotspot hs-bl" id="hs-bl"></div>
+    <div class="hotspot hs-br" id="hs-br"></div>
 
     <!-- Edge strips -->
-    <div class="edge edge-top"></div>
-    <div class="edge edge-bottom"></div>
-    <div class="edge edge-left"></div>
-    <div class="edge edge-right"></div>
+    <div class="edge edge-top" id="edge-top"></div>
+    <div class="edge edge-bottom" id="edge-bottom"></div>
+    <div class="edge edge-left" id="edge-left"></div>
+    <div class="edge edge-right" id="edge-right"></div>
   </div>
+
+  <script>
+    // Fade frame in
+    requestAnimationFrame(() => {
+      document.getElementById('frame').classList.add('visible');
+    });
+
+    // JS-driven breathing — Electron transparent windows suppress CSS animations
+    const elements = [
+      { id: 'hs-tl',      min: 0.45, max: 0.95, speed: 3200, phase: 0      },
+      { id: 'hs-tr',      min: 0.42, max: 0.92, speed: 3200, phase: 0.8    },
+      { id: 'hs-bl',      min: 0.42, max: 0.90, speed: 3200, phase: 1.6    },
+      { id: 'hs-br',      min: 0.40, max: 0.88, speed: 3200, phase: 2.4    },
+      { id: 'edge-top',   min: 0.50, max: 1.00, speed: 3200, phase: 0      },
+      { id: 'edge-bottom',min: 0.48, max: 0.98, speed: 3200, phase: 1.6    },
+      { id: 'edge-left',  min: 0.45, max: 0.92, speed: 3200, phase: 0.4    },
+      { id: 'edge-right', min: 0.42, max: 0.90, speed: 3200, phase: 1.2    },
+    ];
+
+    const nodes = elements.map(el => ({
+      ...el,
+      node: document.getElementById(el.id)
+    }));
+
+    function breathe(timestamp) {
+      nodes.forEach(({ node, min, max, speed, phase }) => {
+        // Sine wave: 0→1→0 over `speed` ms, offset by phase (seconds)
+        const t = (timestamp / speed + phase / (Math.PI * 2)) % 1;
+        const sine = (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2;
+        node.style.opacity = min + sine * (max - min);
+      });
+      requestAnimationFrame(breathe);
+    }
+
+    requestAnimationFrame(breathe);
+  </script>
 </body>
 </html>
