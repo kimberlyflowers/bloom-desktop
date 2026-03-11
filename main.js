@@ -560,6 +560,7 @@ class BloomDesktopApp {
       skipTaskbar: true,
       hasShadow: false,
       roundedCorners: false,
+      type: 'panel',
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -568,6 +569,7 @@ class BloomDesktopApp {
     });
 
     this.glowOverlay.setIgnoreMouseEvents(true);
+    this.glowOverlay.setAlwaysOnTop(true, 'screen-saver');
     const overlayPath = path.join(__dirname, 'renderer/glow-overlay.html');
     console.log('[GlowOverlay] Loading file:', overlayPath);
     this.glowOverlay.loadFile(overlayPath);
