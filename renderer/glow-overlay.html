@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+      pointer-events: none;
+      -webkit-app-region: no-drag;
+    }
+
+    .frame {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* ── CORNER HOTSPOTS ── */
+    /* Soft radial pools at each corner — not huge, just enough warmth */
+    .hotspot {
+      position: absolute;
+      pointer-events: none;
+      filter: blur(28px);
+      animation: pulse 3.2s ease-in-out infinite;
+    }
+
+    .hs-tl {
+      width: 220px; height: 180px;
+      top: -40px; left: -40px;
+      background: radial-gradient(ellipse at 15% 15%,
+        rgba(255, 180, 71, 0.75) 0%,
+        rgba(244, 162, 97, 0.4) 45%,
+        transparent 70%
+      );
+      animation-delay: 0s;
+    }
+
+    .hs-tr {
+      width: 220px; height: 180px;
+      top: -40px; right: -40px;
+      background: radial-gradient(ellipse at 85% 15%,
+        rgba(231, 111, 138, 0.72) 0%,
+        rgba(244, 120, 130, 0.38) 45%,
+        transparent 70%
+      );
+      animation-delay: 0.8s;
+    }
+
+    .hs-bl {
+      width: 220px; height: 180px;
+      bottom: -40px; left: -40px;
+      background: radial-gradient(ellipse at 15% 85%,
+        rgba(244, 162, 97, 0.7) 0%,
+        rgba(255, 140, 80, 0.35) 45%,
+        transparent 70%
+      );
+      animation-delay: 1.6s;
+    }
+
+    .hs-br {
+      width: 220px; height: 180px;
+      bottom: -40px; right: -40px;
+      background: radial-gradient(ellipse at 85% 85%,
+        rgba(231, 111, 138, 0.68) 0%,
+        rgba(255, 100, 130, 0.35) 45%,
+        transparent 70%
+      );
+      animation-delay: 2.4s;
+    }
+
+    /* ── EDGE STRIPS ── */
+    /* ~44px wide — fades to transparent inward. Ties corners together. */
+
+    .edge {
+      position: absolute;
+      pointer-events: none;
+      animation: edgePulse 3.2s ease-in-out infinite;
+    }
+
+    .edge-top {
+      top: 0; left: 0; right: 0;
+      height: 44px;
+      background: linear-gradient(180deg,
+        rgba(248, 160, 90, 0.68) 0%,
+        rgba(244, 162, 97, 0.3) 50%,
+        transparent 100%
+      );
+      mask-image: linear-gradient(90deg, transparent 0%, black 15%, black 85%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 15%, black 85%, transparent 100%);
+      animation-delay: 0s;
+    }
+
+    .edge-bottom {
+      bottom: 0; left: 0; right: 0;
+      height: 44px;
+      background: linear-gradient(0deg,
+        rgba(231, 111, 138, 0.65) 0%,
+        rgba(244, 130, 120, 0.28) 50%,
+        transparent 100%
+      );
+      mask-image: linear-gradient(90deg, transparent 0%, black 15%, black 85%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 15%, black 85%, transparent 100%);
+      animation-delay: 1.6s;
+    }
+
+    .edge-left {
+      top: 0; left: 0; bottom: 0;
+      width: 44px;
+      background: linear-gradient(90deg,
+        rgba(255, 175, 80, 0.62) 0%,
+        rgba(244, 162, 97, 0.25) 55%,
+        transparent 100%
+      );
+      mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
+      animation-delay: 0.4s;
+    }
+
+    .edge-right {
+      top: 0; right: 0; bottom: 0;
+      width: 44px;
+      background: linear-gradient(270deg,
+        rgba(231, 111, 138, 0.60) 0%,
+        rgba(240, 120, 130, 0.24) 55%,
+        transparent 100%
+      );
+      mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 12%, black 88%, transparent 100%);
+      animation-delay: 1.2s;
+    }
+
+    /* ── ANIMATIONS ── */
+
+    /* Staggered pulse — each element breathes slightly out of phase */
+    @keyframes pulse {
+      0%   { opacity: 0.5; transform: scale(1);    }
+      50%  { opacity: 1;   transform: scale(1.04); }
+      100% { opacity: 0.5; transform: scale(1);    }
+    }
+
+    @keyframes edgePulse {
+      0%   { opacity: 0.55; }
+      50%  { opacity: 1;    }
+      100% { opacity: 0.55; }
+    }
+
+    /* Fade in gracefully on show */
+    .frame {
+      animation: fadeIn 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <!-- Corner hotspots -->
+    <div class="hotspot hs-tl"></div>
+    <div class="hotspot hs-tr"></div>
+    <div class="hotspot hs-bl"></div>
+    <div class="hotspot hs-br"></div>
+
+    <!-- Edge strips -->
+    <div class="edge edge-top"></div>
+    <div class="edge edge-bottom"></div>
+    <div class="edge edge-left"></div>
+    <div class="edge edge-right"></div>
+  </div>
+</body>
+</html>

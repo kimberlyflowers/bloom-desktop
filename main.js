@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, screen, shell } = require('electron');
 const path = require('path');
 
 // Import our modules
@@ -7,6 +7,8 @@ const PermissionManager = require('./modules/permission-manager');
 const ConnectionManager = require('./modules/connection-manager');
 const ScreenCapture = require('./modules/screen-capture');
 const InputControl = require('./modules/input-control');
+const BrowserBridge = require('./modules/browser-bridge');
+const DashboardBridge = require('./modules/dashboard-bridge');
 
 class BloomDesktopApp {
   constructor() {
@@ -21,6 +23,11 @@ class BloomDesktopApp {
     this.isConnected = false;
     this.hasPermission = false;
     this.sessionActive = false;
+    this.browserBridge = null;
+    this.dashboardBridge = null;
+    this.glowOverlay = null;
+    this._glowIdleTimer = null;
+    this.sarahUrl = 'https://autonomous-sarah-rodriguez-production.up.railway.app';
   }
 
   async initialize() {
@@ -413,6 +420,51 @@ class BloomDesktopApp {
   initializeModules() {
     this.inputControl = new InputControl();
     this.permissionManager = new PermissionManager();
+
+    // Wire BrowserBridge + DashboardBridge
+    this.dashboardBridge = new DashboardBridge(this.sarahUrl);
+    this.browserBridge = new BrowserBridge(this.dashboardBridge);
+    this.browserBridge.start();
+
+    // Notify glow overlay on incoming command activity
+    this.dashboardBridge.on && this.dashboardBridge.on('frame-sent', () => {
+      this.showGlowOverlay();
+      clearTimeout(this._glowIdleTimer);
+      this._glowIdleTimer = setTimeout(() => this.hideGlowOverlay(), 8000);
+    });
+
+    // Create glow overlay window
+    this.createGlowOverlay();
+
+    // Bridge status IPC
+    ipcMain.handle('bridge-status', () => ({
+      running: !!this.browserBridge,
+      sarahUrl: this.sarahUrl,
+      captureActive: !!this.dashboardBridge,
+      dashboardBridge: !!this.dashboardBridge,
+      browserConnected: this.browserBridge?.isConnected?.() ?? false,
+    }));
+
+    ipcMain.handle('test-dashboard', async () => {
+      try {
+        const result = await this.dashboardBridge?.testConnection();
+        return result ?? { success: false, error: 'No dashboard bridge' };
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+    });
+
+    ipcMain.handle('set-sarah-url', (event, url) => {
+      this.sarahUrl = url;
+      return { ok: true };
+    });
+
+    // Glow overlay IPC
+    ipcMain.handle('glow-show', () => { this.showGlowOverlay(); return { ok: true }; });
+    ipcMain.handle('glow-hide', () => { this.hideGlowOverlay(); return { ok: true }; });
+
+    // Open external URLs
+    ipcMain.handle('open-external', (event, url) => shell.openExternal(url));
   }
 
   handlePermissionRequest(reason) {
@@ -472,6 +524,45 @@ class BloomDesktopApp {
         app.quit();
       }
     });
+  }
+
+  createGlowOverlay() {
+    const { width, height, x, y } = screen.getPrimaryDisplay().bounds;
+
+    this.glowOverlay = new BrowserWindow({
+      x, y, width, height,
+      transparent: true,
+      frame: false,
+      alwaysOnTop: true,
+      focusable: false,
+      skipTaskbar: true,
+      hasShadow: false,
+      roundedCorners: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    this.glowOverlay.setIgnoreMouseEvents(true);
+    this.glowOverlay.loadFile(path.join(__dirname, 'renderer/glow-overlay.html'));
+    this.glowOverlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    this.glowOverlay.hide();
+
+    this.glowOverlay.on('closed', () => { this.glowOverlay = null; });
+  }
+
+  showGlowOverlay() {
+    if (!this.glowOverlay || this.glowOverlay.isDestroyed()) {
+      this.createGlowOverlay();
+    }
+    this.glowOverlay.showInactive();
+  }
+
+  hideGlowOverlay() {
+    if (this.glowOverlay && !this.glowOverlay.isDestroyed()) {
+      this.glowOverlay.hide();
+    }
   }
 
   cleanup() {

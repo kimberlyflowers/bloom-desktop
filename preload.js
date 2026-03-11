@@ -52,3 +52,14 @@ contextBridge.exposeInMainWorld('screenAPI', {
 });
 
 console.log('Preload script loaded successfully');
+
+// Bridge API — glow overlay + dashboard controls
+contextBridge.exposeInMainWorld('bridgeAPI', {
+  getStatus:      () => ipcRenderer.invoke('bridge-status'),
+  testDashboard:  () => ipcRenderer.invoke('test-dashboard'),
+  setSarahUrl:    (url) => ipcRenderer.invoke('set-sarah-url', url),
+  glowShow:       () => ipcRenderer.invoke('glow-show'),
+  glowHide:       () => ipcRenderer.invoke('glow-hide'),
+  openExternal:   (url) => ipcRenderer.invoke('open-external', url),
+  onBridgeStatus: (callback) => ipcRenderer.on('bridge-status', callback),
+});
