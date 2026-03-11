@@ -546,7 +546,8 @@ class BloomDesktopApp {
   }
 
   createGlowOverlay() {
-    const { width, height, x, y } = screen.getPrimaryDisplay().bounds;
+    const display = screen.getPrimaryDisplay();
+    const { width, height, x, y } = display.bounds;
     console.log('[GlowOverlay] Creating — display bounds:', { width, height, x, y });
 
     this.glowOverlay = new BrowserWindow({

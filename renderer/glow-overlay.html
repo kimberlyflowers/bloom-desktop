@@ -25,49 +25,115 @@
     const ctx    = canvas.getContext('2d');
     const DPR    = window.devicePixelRatio || 1;
 
-    const W_CSS = window.screen.width;
-    const H_CSS = window.screen.height;
+    const W = window.screen.width;
+    const H = window.screen.height;
 
-    canvas.style.width  = W_CSS + 'px';
-    canvas.style.height = H_CSS + 'px';
-    canvas.width  = W_CSS * DPR;
-    canvas.height = H_CSS * DPR;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
 
-    // BLOOM sunset — amber → coral → pink
+    // BLOOM sunset palette
     const PALETTE = [
-      [255, 180,  71],
-      [244, 162,  97],
-      [231, 111, 138],
-      [244, 130, 100],
-      [255, 160,  80],
-      [231, 111, 138],
+      [255, 190,  80],   // warm amber
+      [251, 155,  85],   // coral
+      [238, 110, 130],   // pink
+      [248, 140,  95],   // coral-orange
+      [255, 175,  75],   // amber
+      [238, 110, 130],   // pink (loop)
     ];
 
-    const SEGMENTS      = 280;
-    const GLOW_WIDTH    = 18;   // thin sharp core
-    const FLOW_SPEED    = 0.00014; // color travel speed
-    const BREATHE_SPEED = 0.00085; // pulse rate
+    // Comet settings — bright head with long trailing tail
+    const COMET_COUNT   = 2;      // two comets chase each other
+    const COMET_TAIL    = 0.38;   // tail length as fraction of perimeter
+    const COMET_SPEED   = 0.00012;
+    const BREATHE_SPEED = 0.00075;
+    const CORE_WIDTH    = 6;      // sharp bright center line
+    const GLOW_WIDTH    = 32;     // soft halo around it
+    const BLOOM_WIDTH   = 80;     // wide diffuse bloom
 
     function getColor(pos, alpha) {
       const n = PALETTE.length - 1;
       const p = ((pos % 1) + 1) % 1;
       const i = Math.floor(p * n);
       const t = p * n - i;
-      const a = PALETTE[i];
-      const b = PALETTE[Math.min(i + 1, n)];
+      const a = PALETTE[i], b = PALETTE[Math.min(i+1, n)];
       const r = Math.round(a[0] + (b[0]-a[0]) * t);
       const g = Math.round(a[1] + (b[1]-a[1]) * t);
       const bv= Math.round(a[2] + (b[2]-a[2]) * t);
       return `rgba(${r},${g},${bv},${alpha.toFixed(3)})`;
     }
 
+    // Map perimeter position 0..1 clockwise → [x, y]
     function perimToXY(t) {
-      const perim = 2 * (W_CSS + H_CSS);
+      const perim = 2 * (W + H);
       const d = ((t % 1) + 1) % 1 * perim;
-      if      (d < W_CSS)            return [d,              0      ];
-      else if (d < W_CSS + H_CSS)    return [W_CSS,          d - W_CSS];
-      else if (d < 2*W_CSS + H_CSS)  return [W_CSS-(d-W_CSS-H_CSS), H_CSS];
-      else                           return [0,              H_CSS-(d-2*W_CSS-H_CSS)];
+      if      (d < W)           return [d,              0      ];
+      else if (d < W + H)       return [W,              d - W  ];
+      else if (d < 2*W + H)     return [W-(d-W-H),      H      ];
+      else                      return [0,              H-(d-2*W-H)];
+    }
+
+    // Draw a single comet at head position `head` (0..1 around perimeter)
+    function drawComet(head, breath, colorOffset, pass) {
+      const SEGMENTS = 200;
+      const tailLen  = COMET_TAIL;
+
+      for (let i = 0; i < SEGMENTS; i++) {
+        // Position along tail: 0 = tip of tail, 1 = head
+        const frac = i / SEGMENTS;
+        const pos  = head - tailLen * (1 - frac);
+
+        const t0 = pos;
+        const t1 = pos + (tailLen / SEGMENTS) * 1.5;
+
+        const [x0, y0] = perimToXY(t0);
+        const [x1, y1] = perimToXY(t1);
+
+        // Intensity: exponential — bright at head, falls off toward tail
+        const intensity = Math.pow(frac, 1.6);
+        const colorPos  = (pos + colorOffset) % 1;
+
+        if (pass === 'core') {
+          ctx.lineWidth   = CORE_WIDTH;
+          ctx.strokeStyle = getColor(colorPos, breath * intensity * 0.98);
+        } else if (pass === 'halo') {
+          ctx.lineWidth   = GLOW_WIDTH;
+          ctx.strokeStyle = getColor(colorPos, breath * intensity * 0.45);
+        } else {
+          ctx.lineWidth   = BLOOM_WIDTH;
+          ctx.strokeStyle = getColor(colorPos, breath * intensity * 0.18);
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      }
+
+      // Corner pools — radial blooms at each corner
+      const corners = [
+        [0, 0], [W, 0], [W, H], [0, H]
+      ];
+      corners.forEach(([cx, cy], ci) => {
+        // How close is the comet head to this corner?
+        const cornerPerim = ci / 4;
+        let dist = Math.abs(head - cornerPerim);
+        if (dist > 0.5) dist = 1 - dist;
+        const proximity = Math.max(0, 1 - dist / 0.15);
+
+        if (proximity > 0 && pass === 'bloom') {
+          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 180);
+          grad.addColorStop(0,   getColor((cornerPerim + colorOffset) % 1, breath * proximity * 0.55));
+          grad.addColorStop(0.5, getColor((cornerPerim + colorOffset) % 1, breath * proximity * 0.22));
+          grad.addColorStop(1,   'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(
+            Math.max(0, cx - 200), Math.max(0, cy - 200),
+            400, 400
+          );
+        }
+      });
     }
 
     function draw(ts) {
@@ -75,46 +141,36 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(DPR,0,0,DPR,0,0);
 
-      // Breathing — smooth sine, 0.4 → 1.0
-      const breath = 0.4 + 0.6 * (Math.sin(ts * BREATHE_SPEED) * 0.5 + 0.5);
+      ctx.lineCap  = 'round';
+      ctx.lineJoin = 'round';
 
-      // Flow — offset marches forward over time
-      const flow = ts * FLOW_SPEED;
+      const breath = 0.55 + 0.45 * (Math.sin(ts * BREATHE_SPEED) * 0.5 + 0.5);
+      const flow   = ts * COMET_SPEED;
 
-      // ── Pass 1: sharp thin core ──────────────────────────────────────
-      ctx.save();
-      ctx.lineWidth = GLOW_WIDTH;
-      ctx.lineCap   = 'round';
-      for (let i = 0; i < SEGMENTS; i++) {
-        const t0 = i / SEGMENTS;
-        const t1 = (i + 1.4) / SEGMENTS;
-        const [x0, y0] = perimToXY(t0);
-        const [x1, y1] = perimToXY(t1);
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.strokeStyle = getColor((t0 + flow) % 1, breath * 0.90);
-        ctx.stroke();
-      }
-      ctx.restore();
+      // Two comets offset by half perimeter
+      const comets = [
+        { head: flow % 1,          colorOffset: 0    },
+        { head: (flow + 0.5) % 1,  colorOffset: 0.5  },
+      ];
 
-      // ── Pass 2: soft blur halo ───────────────────────────────────────
-      ctx.save();
-      ctx.filter    = 'blur(10px)';
-      ctx.lineWidth = GLOW_WIDTH * 1.8;
-      ctx.lineCap   = 'round';
-      for (let i = 0; i < SEGMENTS; i++) {
-        const t0 = i / SEGMENTS;
-        const t1 = (i + 1.4) / SEGMENTS;
-        const [x0, y0] = perimToXY(t0);
-        const [x1, y1] = perimToXY(t1);
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.strokeStyle = getColor((t0 + flow) % 1, breath * 0.38);
-        ctx.stroke();
-      }
-      ctx.restore();
+      // Draw back-to-front: bloom → halo → core
+      ['bloom', 'halo', 'core'].forEach(pass => {
+        if (pass === 'bloom') {
+          ctx.save();
+          ctx.filter = 'blur(22px)';
+        } else if (pass === 'halo') {
+          ctx.save();
+          ctx.filter = 'blur(8px)';
+        } else {
+          ctx.save();
+        }
+
+        comets.forEach(({ head, colorOffset }) => {
+          drawComet(head, breath, colorOffset, pass);
+        });
+
+        ctx.restore();
+      });
 
       requestAnimationFrame(draw);
     }
