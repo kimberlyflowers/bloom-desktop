@@ -8,6 +8,7 @@ const ConnectionManager = require('./modules/connection-manager');
 const ScreenCapture = require('./modules/screen-capture');
 const InputControl = require('./modules/input-control');
 const BrowserBridge = require('./modules/browser-bridge');
+const DesktopMCPServer = require('./modules/bloom-desktop-control-mcp-server/dist/index');
 
 class BloomDesktopApp {
   constructor() {
@@ -24,6 +25,7 @@ class BloomDesktopApp {
     this.sessionActive = false;
     this.browserBridge = null;
     this.dashboardBridge = null;
+    this.mcpServer = null;
     this.glowOverlay = null;
     this._glowIdleTimer = null;
     this.sarahUrl = 'https://autonomous-sarah-rodriguez-production.up.railway.app';
@@ -438,6 +440,20 @@ class BloomDesktopApp {
 
     // Create glow overlay window
     this.createGlowOverlay();
+
+    // Start desktop MCP server (port 9245)
+    try {
+      this.mcpServer = new DesktopMCPServer();
+      this.mcpServer.setGlowCallback(() => {
+        this.showGlowOverlay();
+        clearTimeout(this._glowIdleTimer);
+        this._glowIdleTimer = setTimeout(() => this.hideGlowOverlay(), 8000);
+      });
+      this.mcpServer.start();
+      console.log('[BloomApp] Desktop MCP server started on port 9245');
+    } catch (err) {
+      console.warn('[BloomApp] MCP server start failed (non-fatal):', err.message);
+    }
 
     // DEV MODE: auto-trigger glow after 3s so you can visually verify it
     if (process.argv.includes('--dev')) {
