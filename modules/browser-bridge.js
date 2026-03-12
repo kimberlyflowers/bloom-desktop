@@ -60,6 +60,24 @@ class BrowserBridge {
           captureActive: this.captureActive,
           dashboardBridge: this.dashboardBridge.getStatus(),
         }));
+      } else if (req.url === '/snapshot') {
+        const { desktopCapturer, screen } = require('electron');
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { width, height } = primaryDisplay.bounds;
+        desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: Math.min(width, 1920), height: Math.min(height, 1080) } })
+          .then(sources => {
+            const info = sources.map((s, i) => ({
+              index: i,
+              name: s.name,
+              display_id: s.display_id,
+              thumbWidth: s.thumbnail.getSize().width,
+              thumbHeight: s.thumbnail.getSize().height,
+              preview: s.thumbnail.toJPEG(50).toString('base64').substring(0, 100)
+            }));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ sources: info, primaryDisplayId: primaryDisplay.id, primaryBounds: primaryDisplay.bounds }));
+          })
+          .catch(e => { res.writeHead(500); res.end(e.message); });
       } else if (req.url === '/displays') {
         const { screen, desktopCapturer } = require('electron');
         const all = screen.getAllDisplays();
