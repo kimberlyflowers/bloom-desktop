@@ -31,30 +31,36 @@
     canvas.width  = W * DPR;
     canvas.height = H * DPR;
     ctx.scale(DPR, DPR);
+
+    // BLOOM brand palette Ñ rose, coral, pink, magenta only. NO yellow/amber.
     const COLORS = [
-      [255, 179,  71],
-      [244, 162,  97],
-      [231, 111, 138],
-      [248, 140,  95],
-      [255, 200,  80],
-      [198, 134, 255],
+      [232,  78, 120],  // BLOOM rose
+      [214,  72, 108],  // deep rose
+      [248, 120, 150],  // soft coral-pink
+      [255, 100, 140],  // bright pink
+      [200,  60, 110],  // dark magenta-rose
+      [240,  90, 130],  // mid coral-rose
     ];
+
     function generateStops() {
       return COLORS.map((rgb) => ({
         rgb,
         pos: Math.random(),
       })).sort((a, b) => a.pos - b.pos);
     }
+
     let currentStops = generateStops();
     let targetStops  = generateStops();
     let morphT = 0;
-    const MORPH_SPEED = 0.003;
+    const MORPH_SPEED = 0.0025;
+
     function lerpStops(a, b, t) {
       return a.map((s, i) => ({
         rgb: s.rgb,
         pos: s.pos + (b[i].pos - s.pos) * t,
       })).sort((a, b) => a.pos - b.pos);
     }
+
     function sampleColor(stops, p, alpha) {
       const norm = ((p % 1) + 1) % 1;
       let lo = stops[stops.length - 1];
@@ -65,13 +71,14 @@
       }
       let span = hi.pos - lo.pos;
       if (span <= 0) span = 1;
-      const t = (norm - lo.pos) / span;
+      const t = Math.max(0, Math.min(1, (norm - lo.pos) / span));
       const r = Math.round(lo.rgb[0] + (hi.rgb[0] - lo.rgb[0]) * t);
       const g = Math.round(lo.rgb[1] + (hi.rgb[1] - lo.rgb[1]) * t);
       const bv= Math.round(lo.rgb[2] + (hi.rgb[2] - lo.rgb[2]) * t);
       return 'rgba(' + r + ',' + g + ',' + bv + ',' + alpha.toFixed(3) + ')';
     }
-    function perimToXY(t, W, H) {
+
+    function perimToXY(t) {
       const perim = 2 * (W + H);
       const d = ((t % 1) + 1) % 1 * perim;
       if      (d < W)         return [d,           0           ];
@@ -79,27 +86,30 @@
       else if (d < 2*W + H)   return [W-(d-W-H),   H           ];
       else                    return [0,           H-(d-2*W-H) ];
     }
-    function drawRing(stops, breathe, pass) {
+
+    function drawRing(stops, breathe, lineWidth, alpha) {
       const SEGMENTS = 300;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.lineWidth = pass === 'sharp' ? 3 : 18;
-      const BASE_ALPHA = pass === 'sharp' ? 0.92 : 0.55;
+      ctx.lineWidth = lineWidth;
       for (let i = 0; i < SEGMENTS; i++) {
         const t0 = i / SEGMENTS;
         const t1 = (i + 1) / SEGMENTS;
-        const [x0, y0] = perimToXY(t0, W, H);
-        const [x1, y1] = perimToXY(t1, W, H);
-        ctx.strokeStyle = sampleColor(stops, (t0 + t1) / 2, BASE_ALPHA * breathe);
+        const [x0, y0] = perimToXY(t0);
+        const [x1, y1] = perimToXY(t1);
+        ctx.strokeStyle = sampleColor(stops, (t0 + t1) / 2, alpha * breathe);
         ctx.beginPath();
         ctx.moveTo(x0, y0);
         ctx.lineTo(x1, y1);
         ctx.stroke();
       }
     }
-    const BREATHE_SPEED = 0.0006;
+
+    const BREATHE_SPEED = 0.0005;
+
     function draw(ts) {
       ctx.clearRect(0, 0, W, H);
+
       morphT += MORPH_SPEED;
       if (morphT >= 1) {
         currentStops = targetStops;
@@ -107,17 +117,29 @@
         morphT = 0;
       }
       const stops = lerpStops(currentStops, targetStops, morphT);
-      const breathe = 0.6 + 0.4 * (Math.sin(ts * BREATHE_SPEED) * 0.5 + 0.5);
+      const breathe = 0.65 + 0.35 * (Math.sin(ts * BREATHE_SPEED) * 0.5 + 0.5);
+
+      // Pass 1 Ñ wide outer glow (blurred)
       ctx.save();
-      ctx.filter = 'blur(12px)';
-      drawRing(stops, breathe, 'glow');
+      ctx.filter = 'blur(14px)';
+      drawRing(stops, breathe, 22, 0.5);
       ctx.restore();
+
+      // Pass 2 Ñ medium inner glow
+      ctx.save();
+      ctx.filter = 'blur(5px)';
+      drawRing(stops, breathe, 8, 0.7);
+      ctx.restore();
+
+      // Pass 3 Ñ sharp crisp edge line
       ctx.save();
       ctx.filter = 'none';
-      drawRing(stops, breathe, 'sharp');
+      drawRing(stops, breathe, 2, 0.9);
       ctx.restore();
+
       requestAnimationFrame(draw);
     }
+
     requestAnimationFrame(draw);
   </script>
 </body>
