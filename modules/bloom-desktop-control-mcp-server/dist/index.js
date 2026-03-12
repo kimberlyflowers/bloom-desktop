@@ -1,6 +1,6 @@
 'use strict';
-const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp');
-const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp');
+const { McpServer } = require('../node_modules/@modelcontextprotocol/sdk/dist/cjs/server/mcp.js');
+const { StreamableHTTPServerTransport } = require('../node_modules/@modelcontextprotocol/sdk/dist/cjs/server/streamableHttp.js');
 const express = require('express');
 const { z } = require('zod');
 
