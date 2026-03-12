@@ -98,9 +98,21 @@ class DesktopMCPServer {
         return { success: true, result: { width: size.width, height: size.height, mouseX: pos.x, mouseY: pos.y } };
       }
       case 'bloom_take_screenshot': {
-        const size = robot.getScreenSize();
-        robot.screen.capture(0, 0, size.width, size.height);
-        return { success: true, result: { captured: true, width: size.width, height: size.height } };
+        // Use Electron desktopCapturer for real screenshot with image data
+        const { desktopCapturer, screen } = require('electron');
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { width, height } = primaryDisplay.size;
+        const sources = await desktopCapturer.getSources({
+          types: ['screen'],
+          thumbnailSize: { width, height }
+        });
+        // Find the source matching the primary display
+        const source = sources.find(s => String(s.display_id) === String(primaryDisplay.id)) || sources[0];
+        if (!source) return { success: false, result: { error: 'No screen source found' } };
+        // thumbnail is a NativeImage â€” convert to base64 JPEG
+        const jpeg = source.thumbnail.toJPEG(85);
+        const base64 = jpeg.toString('base64');
+        return { success: true, result: { captured: true, width, height, image: base64, mimeType: 'image/jpeg' } };
       }
       case 'bloom_click': {
         const { x, y, button = 'left' } = args;
@@ -190,7 +202,7 @@ class DesktopMCPServer {
         }
       }
     } catch (e) {
-      // Network blip Ñ silent, will retry next tick
+      // Network blip ï¿½ silent, will retry next tick
     } finally {
       this._polling = false;
     }
@@ -283,7 +295,7 @@ class DesktopMCPServer {
     if (this._started) return;
     this._started = true;
 
-    // 1. HTTP server Ñ local dev / direct MCP calls
+    // 1. HTTP server ï¿½ local dev / direct MCP calls
     const mcpServer = this._buildMcpServer();
     const app = express();
     app.use(express.json());
@@ -309,7 +321,7 @@ class DesktopMCPServer {
       if (!token) console.warn('[' + SERVER_NAME + '] WARNING: No BLOOM_MCP_TOKEN set (dev mode)');
     });
 
-    // 2. Polling loop Ñ works for all users behind routers
+    // 2. Polling loop ï¿½ works for all users behind routers
     this._startPollingLoop();
   }
 
