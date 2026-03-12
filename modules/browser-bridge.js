@@ -60,6 +60,23 @@ class BrowserBridge {
           captureActive: this.captureActive,
           dashboardBridge: this.dashboardBridge.getStatus(),
         }));
+      } else if (req.url === '/displays') {
+        const { screen, desktopCapturer } = require('electron');
+        const all = screen.getAllDisplays();
+        const primary = screen.getPrimaryDisplay();
+        desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 400, height: 300 } })
+          .then(sources => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              displayCount: all.length,
+              primaryId: primary.id,
+              displays: all.map(d => ({ id: d.id, bounds: d.bounds, scaleFactor: d.scaleFactor })),
+              sourceCount: sources.length,
+              sourceNames: sources.map(s => s.name),
+              capturingSource: sources[0]?.name || 'none'
+            }));
+          })
+          .catch(e => { res.writeHead(500); res.end(e.message); });
       } else {
         res.writeHead(404);
         res.end('Not found');
@@ -156,6 +173,10 @@ class BrowserBridge {
           types: ['screen'],
           thumbnailSize: { width: Math.min(width, 1920), height: Math.min(height, 1080) }
         });
+        if (!this._sourcesLogged) {
+          this._sourcesLogged = true;
+          console.log('[BrowserBridge] available sources:', sources.map(s => s.name), '— capturing:', sources[0]?.name);
+        }
         if (sources.length > 0 && sources[0].thumbnail) {
           const jpegBuffer = sources[0].thumbnail.toJPEG(this.captureQuality);
 
