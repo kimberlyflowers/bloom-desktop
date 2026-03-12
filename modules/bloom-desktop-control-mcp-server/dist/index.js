@@ -90,9 +90,9 @@ class DesktopMCPServer {
   // ??? Tool executor ???????????????????????????????????????????????????????????
   async _executeTool(tool, args) {
     this._triggerGlow();
-    const robot = getRobot();
     switch (tool) {
       case 'bloom_get_screen_info': {
+        const robot = getRobot();
         const size = robot.getScreenSize();
         const pos = robot.getMousePos();
         return { success: true, result: { width: size.width, height: size.height, mouseX: pos.x, mouseY: pos.y } };
@@ -115,12 +115,14 @@ class DesktopMCPServer {
         return { success: true, result: { captured: true, width, height, image: base64, mimeType: 'image/jpeg' } };
       }
       case 'bloom_click': {
+        const robot = getRobot();
         const { x, y, button = 'left' } = args;
         robot.moveMouse(x, y);
         robot.mouseClick(button);
         return { success: true, result: `Clicked ${button} at (${x}, ${y})` };
       }
       case 'bloom_double_click': {
+        const robot = getRobot();
         const { x, y } = args;
         robot.moveMouse(x, y);
         robot.mouseClick('left', true);
@@ -131,6 +133,7 @@ class DesktopMCPServer {
         return { success: true, result: `Mouse at (${args.x}, ${args.y})` };
       }
       case 'bloom_scroll': {
+        const robot = getRobot();
         const { x, y, direction, amount = 3 } = args;
         robot.moveMouse(x, y);
         if (direction === 'up') robot.scrollMouse(0, amount);
@@ -140,6 +143,7 @@ class DesktopMCPServer {
         return { success: true, result: `Scrolled ${direction} ${amount} at (${x}, ${y})` };
       }
       case 'bloom_drag': {
+        const robot = getRobot();
         const { fromX, fromY, toX, toY } = args;
         robot.moveMouse(fromX, fromY);
         robot.mouseToggle('down');
@@ -148,10 +152,12 @@ class DesktopMCPServer {
         return { success: true, result: `Dragged (${fromX},${fromY}) to (${toX},${toY})` };
       }
       case 'bloom_type_text': {
+        const robot = getRobot();
         robot.typeString(args.text);
         return { success: true, result: `Typed ${args.text.length} chars` };
       }
       case 'bloom_key_press': {
+        const robot = getRobot();
         const { key: mainKey, modifiers } = parseKey(args.key);
         if (modifiers.length > 0) robot.keyTap(mainKey, modifiers);
         else robot.keyTap(mainKey);
