@@ -175,10 +175,13 @@ class BrowserBridge {
         });
         if (!this._sourcesLogged) {
           this._sourcesLogged = true;
-          console.log('[BrowserBridge] available sources:', sources.map(s => s.name), '— capturing:', sources[0]?.name);
+          console.log('[BrowserBridge] available sources:', sources.map(s => ({ name: s.name, id: s.display_id })), '— primaryDisplayId:', primaryDisplay.id);
         }
-        if (sources.length > 0 && sources[0].thumbnail) {
-          const jpegBuffer = sources[0].thumbnail.toJPEG(this.captureQuality);
+        // Pick the source whose display_id matches the primary display
+        // Fall back to sources[0] only if no match found
+        const targetSource = sources.find(s => String(s.display_id) === String(primaryDisplay.id)) || sources[0];
+        if (targetSource && targetSource.thumbnail) {
+          const jpegBuffer = targetSource.thumbnail.toJPEG(this.captureQuality);
 
           // Best-effort: get the URL of the focused Electron window
           let currentUrl = '';
