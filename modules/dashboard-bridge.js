@@ -89,6 +89,7 @@ class DashboardBridge extends EventEmitter {
       });
       this.lastPushTime = Date.now();
       this.consecutiveFailures = 0;
+      this.emit("frame-sent");
       if (this.status !== 'pushing') {
         this.status = 'pushing';
         this.emit('status-change', this.getStatus());
