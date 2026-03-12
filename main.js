@@ -451,7 +451,7 @@ class BloomDesktopApp {
         setTimeout(() => {
           console.log('[DEV] Hiding glow overlay');
           this.hideGlowOverlay();
-        }, 12000);
+        }, 60000);
       }, 3000);
     }
 

@@ -1,146 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100%; height: 100%;
-      background: transparent !important;
-      overflow: hidden;
-      pointer-events: none;
-      -webkit-app-region: no-drag;
-    }
-    canvas {
-      position: fixed;
-      top: 0; left: 0;
-      pointer-events: none;
-    }
-  </style>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100vw; height: 100vh;
+  background: transparent !important;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* The glow lives as box-shadow on a border div Ñ GPU composited, genuinely luminous */
+.ring {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  border-radius: 0;
+  /* 3 layers of box-shadow: tight crisp line + medium halo + wide outer bloom */
+  box-shadow:
+    inset 0 0 0 2px rgba(232, 60, 110, 0.9),
+    inset 0 0 20px 4px rgba(220, 50, 100, 0.7),
+    inset 0 0 60px 10px rgba(200, 40, 90, 0.35),
+    inset 0 0 120px 20px rgba(180, 30, 80, 0.15);
+  animation: breathe 3s ease-in-out infinite, colorshift 6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%   { opacity: 0.7; }
+  50%  { opacity: 1.0; }
+  100% { opacity: 0.7; }
+}
+
+@keyframes colorshift {
+  0%   {
+    box-shadow:
+      inset 0 0 0 2px rgba(232, 60, 110, 0.9),
+      inset 0 0 20px 4px rgba(220, 50, 100, 0.7),
+      inset 0 0 60px 10px rgba(200, 40, 90, 0.35),
+      inset 0 0 120px 20px rgba(180, 30, 80, 0.15);
+  }
+  33%  {
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 100, 150, 0.9),
+      inset 0 0 20px 4px rgba(245, 80, 130, 0.7),
+      inset 0 0 60px 10px rgba(220, 60, 110, 0.35),
+      inset 0 0 120px 20px rgba(200, 45, 95, 0.15);
+  }
+  66%  {
+    box-shadow:
+      inset 0 0 0 2px rgba(210, 45, 95, 0.9),
+      inset 0 0 20px 4px rgba(195, 35, 85, 0.7),
+      inset 0 0 60px 10px rgba(175, 25, 75, 0.35),
+      inset 0 0 120px 20px rgba(155, 20, 65, 0.15);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 2px rgba(232, 60, 110, 0.9),
+      inset 0 0 20px 4px rgba(220, 50, 100, 0.7),
+      inset 0 0 60px 10px rgba(200, 40, 90, 0.35),
+      inset 0 0 120px 20px rgba(180, 30, 80, 0.15);
+  }
+}
+</style>
 </head>
 <body>
-  <canvas id="glow"></canvas>
-  <script>
-    const canvas = document.getElementById('glow');
-    const ctx = canvas.getContext('2d');
-    const DPR = window.devicePixelRatio || 1;
-    const W = window.screen.width;
-    const H = window.screen.height;
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
-    canvas.width  = W * DPR;
-    canvas.height = H * DPR;
-    ctx.scale(DPR, DPR);
-
-    // BLOOM brand palette Ñ rose, coral, pink, magenta only. NO yellow/amber.
-    const COLORS = [
-      [232,  78, 120],  // BLOOM rose
-      [214,  72, 108],  // deep rose
-      [248, 120, 150],  // soft coral-pink
-      [255, 100, 140],  // bright pink
-      [200,  60, 110],  // dark magenta-rose
-      [240,  90, 130],  // mid coral-rose
-    ];
-
-    function generateStops() {
-      return COLORS.map((rgb) => ({
-        rgb,
-        pos: Math.random(),
-      })).sort((a, b) => a.pos - b.pos);
-    }
-
-    let currentStops = generateStops();
-    let targetStops  = generateStops();
-    let morphT = 0;
-    const MORPH_SPEED = 0.0025;
-
-    function lerpStops(a, b, t) {
-      return a.map((s, i) => ({
-        rgb: s.rgb,
-        pos: s.pos + (b[i].pos - s.pos) * t,
-      })).sort((a, b) => a.pos - b.pos);
-    }
-
-    function sampleColor(stops, p, alpha) {
-      const norm = ((p % 1) + 1) % 1;
-      let lo = stops[stops.length - 1];
-      let hi = stops[0];
-      for (let i = 0; i < stops.length; i++) {
-        if (stops[i].pos <= norm) lo = stops[i];
-        if (stops[i].pos >= norm && hi === stops[0]) hi = stops[i];
-      }
-      let span = hi.pos - lo.pos;
-      if (span <= 0) span = 1;
-      const t = Math.max(0, Math.min(1, (norm - lo.pos) / span));
-      const r = Math.round(lo.rgb[0] + (hi.rgb[0] - lo.rgb[0]) * t);
-      const g = Math.round(lo.rgb[1] + (hi.rgb[1] - lo.rgb[1]) * t);
-      const bv= Math.round(lo.rgb[2] + (hi.rgb[2] - lo.rgb[2]) * t);
-      return 'rgba(' + r + ',' + g + ',' + bv + ',' + alpha.toFixed(3) + ')';
-    }
-
-    function perimToXY(t) {
-      const perim = 2 * (W + H);
-      const d = ((t % 1) + 1) % 1 * perim;
-      if      (d < W)         return [d,           0           ];
-      else if (d < W + H)     return [W,           d - W       ];
-      else if (d < 2*W + H)   return [W-(d-W-H),   H           ];
-      else                    return [0,           H-(d-2*W-H) ];
-    }
-
-    function drawRing(stops, breathe, lineWidth, alpha) {
-      const SEGMENTS = 300;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = lineWidth;
-      for (let i = 0; i < SEGMENTS; i++) {
-        const t0 = i / SEGMENTS;
-        const t1 = (i + 1) / SEGMENTS;
-        const [x0, y0] = perimToXY(t0);
-        const [x1, y1] = perimToXY(t1);
-        ctx.strokeStyle = sampleColor(stops, (t0 + t1) / 2, alpha * breathe);
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
-      }
-    }
-
-    const BREATHE_SPEED = 0.0005;
-
-    function draw(ts) {
-      ctx.clearRect(0, 0, W, H);
-
-      morphT += MORPH_SPEED;
-      if (morphT >= 1) {
-        currentStops = targetStops;
-        targetStops  = generateStops();
-        morphT = 0;
-      }
-      const stops = lerpStops(currentStops, targetStops, morphT);
-      const breathe = 0.65 + 0.35 * (Math.sin(ts * BREATHE_SPEED) * 0.5 + 0.5);
-
-      // Pass 1 Ñ wide outer glow (blurred)
-      ctx.save();
-      ctx.filter = 'blur(14px)';
-      drawRing(stops, breathe, 22, 0.5);
-      ctx.restore();
-
-      // Pass 2 Ñ medium inner glow
-      ctx.save();
-      ctx.filter = 'blur(5px)';
-      drawRing(stops, breathe, 8, 0.7);
-      ctx.restore();
-
-      // Pass 3 Ñ sharp crisp edge line
-      ctx.save();
-      ctx.filter = 'none';
-      drawRing(stops, breathe, 2, 0.9);
-      ctx.restore();
-
-      requestAnimationFrame(draw);
-    }
-
-    requestAnimationFrame(draw);
-  </script>
+  <div class="ring"></div>
 </body>
 </html>
