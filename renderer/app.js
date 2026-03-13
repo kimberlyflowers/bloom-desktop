@@ -111,3 +111,69 @@ function emergencyStop() {
 function openDashboard() {
   window.bridgeAPI?.openExternal(SARAH_URL);
 }
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('panel-status').style.display = tab === 'status' ? 'block' : 'none';
+  document.getElementById('panel-cowork').style.display = tab === 'cowork' ? 'block' : 'none';
+  if (tab === 'cowork' && !window._sseConnected) connectSSE();
+}
+
+// ── SSE TASK PROGRESS ─────────────────────────────────────────────────────
+let _sseSource = null;
+window._sseConnected = false;
+
+function connectSSE() {
+  if (_sseSource) _sseSource.close();
+  const statusEl = el('cowork-status');
+  statusEl.textContent = 'Connecting...';
+  statusEl.className = 'cowork-status';
+
+  // TODO: pass real sessionId per agent config (currently hardcoded for Sarah v1)
+  _sseSource = new EventSource(SARAH_URL + '/api/chat/progress-stream?sessionId=default');
+
+  _sseSource.onopen = () => {
+    statusEl.textContent = 'Connected';
+    statusEl.className = 'cowork-status live';
+    window._sseConnected = true;
+  };
+
+  _sseSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.connected) return; // initial handshake
+      if (data.todos) renderTodos(data.todos);
+    } catch (e) {}
+  };
+
+  _sseSource.onerror = () => {
+    statusEl.textContent = 'Reconnecting...';
+    statusEl.className = 'cowork-status';
+    window._sseConnected = false;
+    // EventSource auto-reconnects
+  };
+}
+
+function renderTodos(todos) {
+  const list = el('todo-list');
+  if (!todos || todos.length === 0) {
+    list.innerHTML = '<div class="todo-empty">Waiting for Sarah to start a task...</div>';
+    return;
+  }
+  list.innerHTML = todos.map(t => {
+    const icon = t.status === 'completed' ? '\u2713' : t.status === 'in_progress' ? '\u25B6' : '';
+    const label = t.status === 'in_progress' ? t.activeForm : t.content;
+    return `<div class="todo-item ${t.status}">
+      <div class="todo-icon">${icon}</div>
+      <span class="todo-text">${escapeHtml(label)}</span>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}

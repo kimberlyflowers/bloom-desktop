@@ -4,6 +4,8 @@ const { StreamableHTTPServerTransport } = require('../node_modules/@modelcontext
 const express = require('express');
 const { z } = require('zod');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const http = require('http');
 const https = require('https');
 
@@ -163,6 +165,66 @@ class DesktopMCPServer {
         else robot.keyTap(mainKey);
         return { success: true, result: `Pressed ${args.key}` };
       }
+      // ── Filesystem tools ──────────────────────────────────────────────
+      case 'bloom_list_directory': {
+        try {
+          const dirPath = args.path || process.env.HOME || '/';
+          const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+          const items = entries.map(e => ({
+            name: e.name,
+            type: e.isDirectory() ? 'directory' : e.isSymbolicLink() ? 'symlink' : 'file'
+          }));
+          return { success: true, result: { path: dirPath, count: items.length, items } };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      }
+      case 'bloom_read_file': {
+        try {
+          const content = fs.readFileSync(args.path, 'utf-8');
+          const maxLen = args.maxLength || 100000;
+          const truncated = content.length > maxLen;
+          return { success: true, result: { path: args.path, length: content.length, truncated, content: truncated ? content.slice(0, maxLen) : content } };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      }
+      case 'bloom_write_file': {
+        try {
+          const dir = path.dirname(args.path);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(args.path, args.content, 'utf-8');
+          return { success: true, result: `Wrote ${args.content.length} chars to ${args.path}` };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      }
+      case 'bloom_move_file': {
+        try {
+          fs.renameSync(args.source, args.destination);
+          return { success: true, result: `Moved ${args.source} → ${args.destination}` };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      }
+      case 'bloom_create_folder': {
+        try {
+          fs.mkdirSync(args.path, { recursive: true });
+          return { success: true, result: `Created folder ${args.path}` };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      }
+      case 'bloom_delete_file': {
+        try {
+          const stat = fs.statSync(args.path);
+          if (stat.isDirectory()) fs.rmSync(args.path, { recursive: true });
+          else fs.unlinkSync(args.path);
+          return { success: true, result: `Deleted ${args.path}` };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
+      }
       default:
         return { success: false, error: `Unknown tool: ${tool}` };
     }
@@ -300,6 +362,73 @@ class DesktopMCPServer {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     }, async (args) => { const r = await self._executeTool('bloom_key_press', args); return ok(r.result); });
 
+    // ── Filesystem tools ──────────────────────────────────────────────
+    server.registerTool('bloom_list_directory', {
+      title: 'List Directory',
+      description: 'List files and folders in a directory. Args: path (defaults to home).',
+      inputSchema: z.object({ path: z.string().optional() }).strict(),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    }, async (args) => {
+      const r = await self._executeTool('bloom_list_directory', args);
+      if (!r.success) return ok(`Error: ${r.error}`);
+      return ok(`${r.result.count} items in ${r.result.path}`, r.result);
+    });
+
+    server.registerTool('bloom_read_file', {
+      title: 'Read File',
+      description: 'Read text content of a file. Args: path, maxLength (optional, default 100000).',
+      inputSchema: z.object({ path: z.string(), maxLength: z.number().int().optional() }).strict(),
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    }, async (args) => {
+      const r = await self._executeTool('bloom_read_file', args);
+      if (!r.success) return ok(`Error: ${r.error}`);
+      return ok(`Read ${r.result.length} chars from ${r.result.path}${r.result.truncated ? ' (truncated)' : ''}`, r.result);
+    });
+
+    server.registerTool('bloom_write_file', {
+      title: 'Write File',
+      description: 'Write text content to a file (creates parent dirs if needed). Args: path, content.',
+      inputSchema: z.object({ path: z.string(), content: z.string() }).strict(),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    }, async (args) => {
+      const r = await self._executeTool('bloom_write_file', args);
+      if (!r.success) return ok(`Error: ${r.error}`);
+      return ok(r.result);
+    });
+
+    server.registerTool('bloom_move_file', {
+      title: 'Move / Rename File',
+      description: 'Move or rename a file or folder. Args: source, destination.',
+      inputSchema: z.object({ source: z.string(), destination: z.string() }).strict(),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    }, async (args) => {
+      const r = await self._executeTool('bloom_move_file', args);
+      if (!r.success) return ok(`Error: ${r.error}`);
+      return ok(r.result);
+    });
+
+    server.registerTool('bloom_create_folder', {
+      title: 'Create Folder',
+      description: 'Create a folder (and parents if needed). Args: path.',
+      inputSchema: z.object({ path: z.string() }).strict(),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    }, async (args) => {
+      const r = await self._executeTool('bloom_create_folder', args);
+      if (!r.success) return ok(`Error: ${r.error}`);
+      return ok(r.result);
+    });
+
+    server.registerTool('bloom_delete_file', {
+      title: 'Delete File or Folder',
+      description: 'Delete a file or folder (recursive for folders). Args: path.',
+      inputSchema: z.object({ path: z.string() }).strict(),
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+    }, async (args) => {
+      const r = await self._executeTool('bloom_delete_file', args);
+      if (!r.success) return ok(`Error: ${r.error}`);
+      return ok(r.result);
+    });
+
     return server;
   }
 
@@ -320,7 +449,7 @@ class DesktopMCPServer {
       next();
     });
     app.get('/health', (_req, res) => {
-      res.json({ status: 'online', server: SERVER_NAME, version: SERVER_VERSION, tools: 9, sessionId: this._sessionId });
+      res.json({ status: 'online', server: SERVER_NAME, version: SERVER_VERSION, tools: 15, sessionId: this._sessionId });
     });
     app.post('/mcp', async (req, res) => {
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });

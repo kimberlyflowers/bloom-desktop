@@ -217,6 +217,112 @@
     }
     .dashboard-btn:hover { border-color: #F4A261; color: #F4A261; }
 
+    /* ── TAB BAR ── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      padding: 14px 24px 0;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 0;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #666;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      -webkit-app-region: no-drag;
+    }
+    .tab.active {
+      color: #F4A261;
+      border-bottom-color: #F4A261;
+    }
+    .tab:hover { color: #aaa; }
+
+    /* ── COWORK PANEL ── */
+    .cowork-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .cowork-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f0f0f0;
+    }
+    .cowork-status {
+      font-size: 11px;
+      color: #666;
+    }
+    .cowork-status.live { color: #4ade80; }
+
+    .todo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .todo-empty {
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: #111113;
+      border: 1px solid #222226;
+      border-radius: 8px;
+      font-size: 12px;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .todo-item.in_progress {
+      border-color: #F4A261;
+      background: #1a1610;
+    }
+    .todo-item.completed {
+      opacity: 0.5;
+    }
+    .todo-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #3a3a3e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 10px;
+      transition: all 0.3s;
+    }
+    .todo-item.pending .todo-icon {
+      border-color: #3a3a3e;
+    }
+    .todo-item.in_progress .todo-icon {
+      border-color: #F4A261;
+      background: #F4A261;
+      color: #0f0f10;
+    }
+    .todo-item.completed .todo-icon {
+      border-color: #4ade80;
+      background: #4ade80;
+      color: #0f0f10;
+    }
+    .todo-text {
+      color: #ccc;
+      line-height: 1.3;
+    }
+    .todo-item.in_progress .todo-text { color: #F4A261; }
+    .todo-item.completed .todo-text { color: #888; text-decoration: line-through; }
+
     /* Active control border on popup */
     #control-border {
       position: fixed; inset: 0;
@@ -240,7 +346,12 @@
     <span class="bloom-wordmark">Bloom Desktop</span>
   </div>
 
-  <div class="main">
+  <div class="tab-bar">
+    <button class="tab active" id="tab-status" onclick="switchTab('status')">Status</button>
+    <button class="tab" id="tab-cowork" onclick="switchTab('cowork')">Cowork</button>
+  </div>
+
+  <div class="main" id="panel-status">
     <!-- Agent card -->
     <div class="agent-card">
       <div class="agent-row">
@@ -295,6 +406,18 @@
     <button class="dashboard-btn" onclick="openDashboard()">
       <span>↗</span> Open Sarah's Dashboard
     </button>
+  </div>
+
+  <div class="main" id="panel-cowork" style="display:none;">
+    <div class="agent-card">
+      <div class="cowork-header">
+        <span class="cowork-title">Task Progress</span>
+        <span class="cowork-status" id="cowork-status">Connecting...</span>
+      </div>
+      <div id="todo-list" class="todo-list">
+        <div class="todo-empty">Waiting for Sarah to start a task...</div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

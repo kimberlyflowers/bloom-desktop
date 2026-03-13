@@ -74,7 +74,7 @@ class BloomDesktopApp {
   createMainWindow() {
     this.mainWindow = new BrowserWindow({
       width: 600,
-      height: 500,
+      height: 640,
       minWidth: 500,
       minHeight: 400,
       webPreferences: {
