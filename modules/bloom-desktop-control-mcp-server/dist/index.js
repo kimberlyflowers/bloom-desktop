@@ -191,8 +191,8 @@ class DesktopMCPServer {
         'GET'
       );
       // Re-register if Railway lost our session (redeploy wipes in-memory sessions)
-      if (res.error && (res.error.includes('not found') || res.error.includes('Unknown session'))) {
-        console.warn('[bloom-desktop] Session lost on Railway \u2014 re-registering...');
+      if (res.sessionLost || (res.error && (res.error.includes('not found') || res.error.includes('Unknown session')))) {
+        console.warn('[bloom-desktop] Session lost on Railway — re-registering...');
         await this._register();
         return;
       }
