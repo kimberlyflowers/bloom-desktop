@@ -190,6 +190,12 @@ class DesktopMCPServer {
         '/api/desktop/pending?sessionId=' + this._sessionId,
         'GET'
       );
+      // Re-register if Railway lost our session (redeploy wipes in-memory sessions)
+      if (res.error && (res.error.includes('not found') || res.error.includes('Unknown session'))) {
+        console.warn('[bloom-desktop] Session lost on Railway \u2014 re-registering...');
+        await this._register();
+        return;
+      }
       if (res.commands && res.commands.length > 0) {
         for (const cmd of res.commands) {
           let outcome;
