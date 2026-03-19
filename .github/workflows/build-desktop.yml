@@ -1,0 +1,87 @@
+name: Build BLOOM Desktop
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Mac (ARM64 + Intel)
+        run: npx electron-builder --mac --arm64 --x64
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload Mac DMGs to Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          # Upload ARM64 DMG
+          DMG_ARM="dist/BLOOM Desktop-1.0.0-arm64.dmg"
+          if [ -f "$DMG_ARM" ]; then
+            curl -s -X POST \
+              "${SUPABASE_URL}/storage/v1/object/desktop-downloads/BLOOM-Desktop-Mac-ARM64.dmg" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+              -H "Content-Type: application/octet-stream" \
+              -H "x-upsert: true" \
+              --data-binary "@${DMG_ARM}"
+            echo "Uploaded ARM64 DMG"
+          fi
+
+          # Upload Intel DMG
+          DMG_INTEL="dist/BLOOM Desktop-1.0.0.dmg"
+          if [ -f "$DMG_INTEL" ]; then
+            curl -s -X POST \
+              "${SUPABASE_URL}/storage/v1/object/desktop-downloads/BLOOM-Desktop-Mac-Intel.dmg" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+              -H "Content-Type: application/octet-stream" \
+              -H "x-upsert: true" \
+              --data-binary "@${DMG_INTEL}"
+            echo "Uploaded Intel DMG"
+          fi
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows
+        run: npx electron-builder --win --x64
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload Windows EXE to Supabase Storage
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          EXE=$(find dist -name "*.exe" | head -1)
+          if [ -n "$EXE" ]; then
+            curl -s -X POST \
+              "${SUPABASE_URL}/storage/v1/object/desktop-downloads/BLOOM-Desktop-Windows.exe" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+              -H "Content-Type: application/octet-stream" \
+              -H "x-upsert: true" \
+              --data-binary "@${EXE}"
+            echo "Uploaded Windows EXE"
+          fi
