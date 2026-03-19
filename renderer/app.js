@@ -4,17 +4,124 @@ let lastFrameTime = 0;
 let fpsHistory = [];
 let statusPolling = null;
 
-const SARAH_URL = 'https://autonomous-sarah-rodriguez-production.up.railway.app';
+// These get set dynamically after auth
+let SARAH_URL = 'https://autonomous-sarah-rodriguez-production.up.railway.app';
+let currentUser = null;
+let currentOrg = null;
+let currentAgent = null;
 
 function el(id) { return document.getElementById(id); }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   el('emergency-key').textContent =
     window.electronAPI?.platform === 'darwin' ? 'Cmd+Shift+Esc' : 'Ctrl+Shift+Esc';
 
+  // Try restoring a previous session
+  if (window.authAPI) {
+    const result = await window.authAPI.tryRestore();
+    if (result && result.success) {
+      onAuthSuccess(result);
+      return;
+    }
+  }
+
+  // No stored session — show sign-in screen
+  showScreen('signin');
+});
+
+// ── AUTH ─────────────────────────────────────────────────────────────────
+function showScreen(screen) {
+  el('screen-signin').style.display = screen === 'signin' ? 'flex' : 'none';
+  el('screen-app').style.display = screen === 'app' ? 'block' : 'none';
+}
+
+async function handleSignIn() {
+  const email = el('signin-email').value.trim();
+  const password = el('signin-password').value;
+  const errorEl = el('signin-error');
+  const btn = el('signin-btn');
+
+  if (!email || !password) {
+    errorEl.textContent = 'Enter your email and password';
+    return;
+  }
+
+  errorEl.textContent = '';
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+
+  try {
+    const result = await window.authAPI.signIn(email, password);
+
+    if (!result.success) {
+      errorEl.textContent = result.error || 'Sign-in failed';
+      btn.textContent = 'Sign In';
+      btn.disabled = false;
+      return;
+    }
+
+    onAuthSuccess(result);
+  } catch (err) {
+    errorEl.textContent = 'Connection error. Try again.';
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+  }
+}
+
+function onAuthSuccess(result) {
+  currentUser = result.user;
+  currentOrg = result.org;
+  currentAgent = result.agent;
+
+  // Populate the UI with real data
+  const agentName = currentAgent?.name || 'Your Bloomie';
+  const initials = agentName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  el('agent-avatar').textContent = initials;
+  el('agent-name-display').textContent = agentName;
+  el('agent-role-display').textContent = `AI Employee · ${currentOrg?.name || 'BLOOM'}`;
+  el('dashboard-link-text').textContent = `Open ${agentName.split(' ')[0]}'s Dashboard`;
+
+  // Switch to app screen
+  showScreen('app');
+
+  // Start status polling and FPS bar
   startStatusPolling();
   animateFpsBar();
+
+  // Register desktop with Railway (fire-and-forget)
+  window.authAPI.registerDesktop().catch(() => {});
+}
+
+async function handleSignOut() {
+  if (window.authAPI) {
+    await window.authAPI.signOut();
+  }
+  currentUser = null;
+  currentOrg = null;
+  currentAgent = null;
+
+  // Reset form
+  el('signin-email').value = '';
+  el('signin-password').value = '';
+  el('signin-error').textContent = '';
+  el('signin-btn').textContent = 'Sign In';
+  el('signin-btn').disabled = false;
+
+  // Stop polling
+  if (statusPolling) {
+    clearInterval(statusPolling);
+    statusPolling = null;
+  }
+
+  showScreen('signin');
+}
+
+// Enter key submits signin form
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && el('screen-signin').style.display !== 'none') {
+    handleSignIn();
+  }
 });
 
 // ── STATUS POLLING ─────────────────────────────────────────────────────────
@@ -131,7 +238,6 @@ function connectSSE() {
   statusEl.textContent = 'Connecting...';
   statusEl.className = 'cowork-status';
 
-  // TODO: pass real sessionId per agent config (currently hardcoded for Sarah v1)
   _sseSource = new EventSource(SARAH_URL + '/api/chat/progress-stream?sessionId=default');
 
   _sseSource.onopen = () => {
@@ -143,7 +249,7 @@ function connectSSE() {
   _sseSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      if (data.connected) return; // initial handshake
+      if (data.connected) return;
       if (data.todos) renderTodos(data.todos);
     } catch (e) {}
   };
@@ -152,14 +258,14 @@ function connectSSE() {
     statusEl.textContent = 'Reconnecting...';
     statusEl.className = 'cowork-status';
     window._sseConnected = false;
-    // EventSource auto-reconnects
   };
 }
 
 function renderTodos(todos) {
   const list = el('todo-list');
   if (!todos || todos.length === 0) {
-    list.innerHTML = '<div class="todo-empty">Waiting for Sarah to start a task...</div>';
+    const name = currentAgent?.name?.split(' ')[0] || 'your Bloomie';
+    list.innerHTML = `<div class="todo-empty">Waiting for ${escapeHtml(name)} to start a task...</div>`;
     return;
   }
   list.innerHTML = todos.map(t => {

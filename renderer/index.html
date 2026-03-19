@@ -45,6 +45,111 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+    .header-spacer { flex: 1; }
+    .header-signout {
+      font-size: 11px;
+      color: #555;
+      background: none;
+      border: none;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      transition: color 0.2s;
+    }
+    .header-signout:hover { color: #E76F8A; }
+
+    /* ── SIGN-IN SCREEN ── */
+    #screen-signin {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 32px;
+      min-height: calc(100vh - 60px);
+    }
+
+    .signin-logo {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, #FFB347, #F4A261, #E76F8A);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 16px;
+    }
+
+    .signin-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .signin-subtitle {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 28px;
+    }
+
+    .signin-form {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .signin-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #1a1a1c;
+      border: 1px solid #2a2a2e;
+      border-radius: 10px;
+      color: #f0f0f0;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .signin-input:focus {
+      border-color: #F4A261;
+    }
+    .signin-input::placeholder {
+      color: #555;
+    }
+
+    .signin-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #F4A261, #E76F8A);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-top: 4px;
+    }
+    .signin-btn:active { transform: scale(0.97); }
+    .signin-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .signin-error {
+      font-size: 12px;
+      color: #ef4444;
+      text-align: center;
+      min-height: 18px;
+      margin-top: 4px;
+    }
+
+    .signin-loading {
+      font-size: 12px;
+      color: #F4A261;
+      text-align: center;
+      min-height: 18px;
+    }
 
     /* ── MAIN ── */
     .main { padding: 20px 24px; }
@@ -341,81 +446,113 @@
 <body>
   <div id="control-border"></div>
 
-  <div class="header">
-    <div class="bloom-logo">B</div>
-    <span class="bloom-wordmark">Bloom Desktop</span>
-  </div>
-
-  <div class="tab-bar">
-    <button class="tab active" id="tab-status" onclick="switchTab('status')">Status</button>
-    <button class="tab" id="tab-cowork" onclick="switchTab('cowork')">Cowork</button>
-  </div>
-
-  <div class="main" id="panel-status">
-    <!-- Agent card -->
-    <div class="agent-card">
-      <div class="agent-row">
-        <div class="agent-avatar">SR</div>
-        <div>
-          <div class="agent-name">Sarah Rodriguez</div>
-          <div class="agent-role">AI Employee · BLOOM Ecosystem</div>
-        </div>
-      </div>
-
-      <div class="status-row">
-        <div class="status-pill">
-          <div class="status-dot" id="stream-dot"></div>
-          <span id="stream-label">Connecting...</span>
-        </div>
-        <div class="frame-count" id="frame-count">0 frames</div>
-      </div>
-
-      <div class="fps-bar-wrap">
-        <div class="fps-bar" id="fps-bar"></div>
-      </div>
-
-      <div class="stats-row">
-        <div class="stat-chip">
-          <span class="val" id="latency-val">--</span>
-          Latency
-        </div>
-        <div class="stat-chip">
-          <span class="val" id="browser-val">--</span>
-          Browser CDP
-        </div>
-        <div class="stat-chip">
-          <span class="val" id="fps-val">0</span>
-          FPS
-        </div>
-      </div>
+  <!-- ═══════════════════════════════════════════════════════
+       SIGN-IN SCREEN — shown on first launch / when logged out
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-signin">
+    <div class="header" style="position:absolute;top:0;left:0;right:0;">
+      <div class="bloom-logo">B</div>
+      <span class="bloom-wordmark">Bloom Desktop</span>
     </div>
 
-    <!-- Buttons -->
-    <div class="btn-row">
-      <button class="btn btn-primary" id="btn-test" onclick="testDashboard()">Test Connection</button>
-      <button class="btn btn-secondary" id="btn-stop" onclick="emergencyStop()" disabled>Stop</button>
-    </div>
+    <div class="signin-logo">B</div>
+    <div class="signin-title">Sign in to BLOOM</div>
+    <div class="signin-subtitle">Connect your Bloomie to this computer</div>
 
-    <!-- Emergency -->
-    <div class="emergency">
-      <span class="emergency-label">Emergency Stop</span>
-      <span class="kbd" id="emergency-key">Cmd+Shift+Esc</span>
+    <div class="signin-form">
+      <input type="email" id="signin-email" class="signin-input"
+             placeholder="Email address" autocomplete="email" />
+      <input type="password" id="signin-password" class="signin-input"
+             placeholder="Password" autocomplete="current-password" />
+      <button class="signin-btn" id="signin-btn" onclick="handleSignIn()">
+        Sign In
+      </button>
+      <div class="signin-error" id="signin-error"></div>
     </div>
-
-    <!-- Dashboard link -->
-    <button class="dashboard-btn" onclick="openDashboard()">
-      <span>↗</span> Open Sarah's Dashboard
-    </button>
   </div>
 
-  <div class="main" id="panel-cowork" style="display:none;">
-    <div class="agent-card">
-      <div class="cowork-header">
-        <span class="cowork-title">Task Progress</span>
-        <span class="cowork-status" id="cowork-status">Connecting...</span>
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN APP — shown after successful auth
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-app" style="display:none;">
+    <div class="header">
+      <div class="bloom-logo">B</div>
+      <span class="bloom-wordmark">Bloom Desktop</span>
+      <div class="header-spacer"></div>
+      <button class="header-signout" id="btn-signout" onclick="handleSignOut()">Sign out</button>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active" id="tab-status" onclick="switchTab('status')">Status</button>
+      <button class="tab" id="tab-cowork" onclick="switchTab('cowork')">Cowork</button>
+    </div>
+
+    <div class="main" id="panel-status">
+      <!-- Agent card — populated dynamically -->
+      <div class="agent-card">
+        <div class="agent-row">
+          <div class="agent-avatar" id="agent-avatar">--</div>
+          <div>
+            <div class="agent-name" id="agent-name-display">Loading...</div>
+            <div class="agent-role" id="agent-role-display">AI Employee</div>
+          </div>
+        </div>
+
+        <div class="status-row">
+          <div class="status-pill">
+            <div class="status-dot" id="stream-dot"></div>
+            <span id="stream-label">Connecting...</span>
+          </div>
+          <div class="frame-count" id="frame-count">0 frames</div>
+        </div>
+
+        <div class="fps-bar-wrap">
+          <div class="fps-bar" id="fps-bar"></div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-chip">
+            <span class="val" id="latency-val">--</span>
+            Latency
+          </div>
+          <div class="stat-chip">
+            <span class="val" id="browser-val">--</span>
+            Browser CDP
+          </div>
+          <div class="stat-chip">
+            <span class="val" id="fps-val">0</span>
+            FPS
+          </div>
+        </div>
       </div>
-      <div id="todo-list" class="todo-list">
-        <div class="todo-empty">Waiting for Sarah to start a task...</div>
+
+      <!-- Buttons -->
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-test" onclick="testDashboard()">Test Connection</button>
+        <button class="btn btn-secondary" id="btn-stop" onclick="emergencyStop()" disabled>Stop</button>
+      </div>
+
+      <!-- Emergency -->
+      <div class="emergency">
+        <span class="emergency-label">Emergency Stop</span>
+        <span class="kbd" id="emergency-key">Cmd+Shift+Esc</span>
+      </div>
+
+      <!-- Dashboard link -->
+      <button class="dashboard-btn" id="dashboard-link" onclick="openDashboard()">
+        <span>&#8599;</span> <span id="dashboard-link-text">Open Dashboard</span>
+      </button>
+    </div>
+
+    <div class="main" id="panel-cowork" style="display:none;">
+      <div class="agent-card">
+        <div class="cowork-header">
+          <span class="cowork-title">Task Progress</span>
+          <span class="cowork-status" id="cowork-status">Connecting...</span>
+        </div>
+        <div id="todo-list" class="todo-list">
+          <div class="todo-empty" id="todo-empty-text">Waiting for your Bloomie to start a task...</div>
+        </div>
       </div>
     </div>
   </div>

@@ -53,6 +53,15 @@ contextBridge.exposeInMainWorld('screenAPI', {
 
 console.log('Preload script loaded successfully');
 
+// Auth API — sign in/out with BLOOM account
+contextBridge.exposeInMainWorld('authAPI', {
+  signIn:           (email, password) => ipcRenderer.invoke('auth-sign-in', email, password),
+  signOut:          () => ipcRenderer.invoke('auth-sign-out'),
+  tryRestore:       () => ipcRenderer.invoke('auth-try-restore'),
+  getState:         () => ipcRenderer.invoke('auth-get-state'),
+  registerDesktop:  () => ipcRenderer.invoke('auth-register-desktop'),
+});
+
 // Bridge API — glow overlay + dashboard controls
 contextBridge.exposeInMainWorld('bridgeAPI', {
   getStatus:      () => ipcRenderer.invoke('bridge-status'),

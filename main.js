@@ -9,6 +9,7 @@ const ScreenCapture = require('./modules/screen-capture');
 const InputControl = require('./modules/input-control');
 const BrowserBridge = require('./modules/browser-bridge');
 const DesktopMCPServer = require('./modules/bloom-desktop-control-mcp-server/dist/index');
+const AuthManager = require('./modules/auth-manager');
 
 class BloomDesktopApp {
   constructor() {
@@ -28,6 +29,7 @@ class BloomDesktopApp {
     this.mcpServer = null;
     this.glowOverlay = null;
     this._glowIdleTimer = null;
+    this.authManager = null;
     this.sarahUrl = 'https://autonomous-sarah-rodriguez-production.up.railway.app';
   }
 
@@ -415,6 +417,47 @@ class BloomDesktopApp {
       this.systemTray?.updateStatus(false, null);
 
       return { success: true };
+    });
+
+    // ── AUTH IPC HANDLERS ──────────────────────────────────────────────
+
+    ipcMain.handle('auth-sign-in', async (event, email, password) => {
+      if (!this.authManager) {
+        this.authManager = new AuthManager();
+      }
+      const result = await this.authManager.signIn(email, password);
+      if (result.success) {
+        console.log('[BloomApp] Auth success:', result.user?.email, 'org:', result.org?.name);
+      }
+      return result;
+    });
+
+    ipcMain.handle('auth-sign-out', async () => {
+      if (!this.authManager) return { success: true };
+      const result = await this.authManager.signOut();
+      console.log('[BloomApp] Signed out');
+      return result;
+    });
+
+    ipcMain.handle('auth-try-restore', async () => {
+      if (!this.authManager) {
+        this.authManager = new AuthManager();
+      }
+      const result = await this.authManager.tryRestoreSession();
+      if (result.success) {
+        console.log('[BloomApp] Session restored:', result.user?.email);
+      }
+      return result;
+    });
+
+    ipcMain.handle('auth-get-state', async () => {
+      if (!this.authManager) return { authenticated: false };
+      return this.authManager.getState();
+    });
+
+    ipcMain.handle('auth-register-desktop', async () => {
+      if (!this.authManager) return { success: false, error: 'Not initialized' };
+      return await this.authManager.registerDesktop(this.sarahUrl);
     });
   }
 
